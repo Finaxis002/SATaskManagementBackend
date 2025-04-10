@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require("./Config/db")
+const emploeeRoutes = require ("./Routes/employeeRoutes")
 
 
 dotenv.config(); // Load .env
@@ -15,6 +16,9 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+
+app.use("/api/employees", emploeeRoutes);
 
 // Routes
 app.get('/', (req, res) => {
