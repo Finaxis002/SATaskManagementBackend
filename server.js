@@ -4,21 +4,31 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require("./Config/db")
 const emploeeRoutes = require ("./Routes/employeeRoutes")
+const taskRoutes = require("./Routes/taskRoutes")
+const cookieParser = require("cookie-parser");
+
 
 
 dotenv.config(); // Load .env
 
 
 const app = express();
+app.use(express.json());
+app.use(cookieParser());
 
 connectDB();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: "http://localhost:5173", // 👈 your frontend Vite dev server
+  credentials: true,              // ✅ allow cookies to be sent
+}));
+
 
 
 app.use("/api/employees", emploeeRoutes);
+
+app.use("/api/tasks", taskRoutes);
 
 // Routes
 app.get('/', (req, res) => {
