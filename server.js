@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require("./Config/db")
 const emploeeRoutes = require ("./Routes/employeeRoutes")
+const taskRoutes = require('./Routes/taskRoutes')
 
 
 dotenv.config(); // Load .env
@@ -19,6 +20,9 @@ app.use(express.json());
 
 
 app.use("/api/employees", emploeeRoutes);
+app.use('/api/tasks', taskRoutes)
+
+
 
 // Routes
 app.get('/', (req, res) => {
