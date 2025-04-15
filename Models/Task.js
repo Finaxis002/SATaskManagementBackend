@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const TaskSchema = new mongoose.Schema({
@@ -8,6 +9,12 @@ const TaskSchema = new mongoose.Schema({
     name: { type: String },
     email: { type: String }
   },
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Employee",
+    required: false,
+  },
+  assignedToName: { type: String },
   column: { type: String }, // For example: 'Recently assigned', 'Do today', etc.
   createdAt: { type: Date, default: Date.now }
 });
