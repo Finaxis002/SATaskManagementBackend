@@ -77,33 +77,57 @@ router.post("/login", async (req, res) => {
 
   // Check for hardcoded admin credentials
   if (userId === adminUserId && password === adminPassword) {
-    // Generate JWT for admin
     const token = jwt.sign({ userId: adminUserId }, "your_jwt_secret", { expiresIn: "1h" });
-    return res.json({ message: "Admin login successful", token, username: "Admin" });
+    return res.json({
+      message: "Admin login successful",
+      token,
+      name: "Admin",
+      role: "admin",
+    });
   }
 
   try {
-    // Check if the user exists in the database
     const user = await Employee.findOne({ userId });
-    
     if (!user) {
       return res.status(400).json({ message: "Invalid userId or password" });
     }
 
-    // Compare the password using bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
-    
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid userId or password" });
     }
 
-    // Generate JWT for the regular user
     const token = jwt.sign({ userId: user.userId }, "your_jwt_secret", { expiresIn: "1h" });
-    
-    return res.json({ message: "Login successful", token, username: user.username });  // Send username here
-    
+
+    return res.json({
+      message: "Login successful",
+      token,
+      name: user.name,  // ✅ Correct field
+      role: "user",
+    });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// In routes/employees.js
+router.post("/reset-password/:id", async (req, res) => {
+  try {
+    const newPassword = Math.random().toString(36).slice(2, 10); // Generate random 8-char password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updated = await Employee.findByIdAndUpdate(
+      req.params.id,
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "Password reset", newPassword }); // You can email it instead
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });

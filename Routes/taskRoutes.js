@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const Task = require("../models/Task");
 
 // Create a new task
@@ -54,6 +55,7 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Task deleted" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete task", error });
+
   }
 });
 
