@@ -75,7 +75,7 @@ router.delete("/:id", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { userId, password } = req.body;
 
-  // Check for hardcoded admin credentials
+  // Admin Login
   if (userId === adminUserId && password === adminPassword) {
     const token = jwt.sign({ userId: adminUserId }, "your_jwt_secret", { expiresIn: "1h" });
     return res.json({
@@ -83,6 +83,7 @@ router.post("/login", async (req, res) => {
       token,
       name: "Admin",
       role: "admin",
+      email: "admin@example.com" // Optional but good to include
     });
   }
 
@@ -97,13 +98,23 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid userId or password" });
     }
 
-    const token = jwt.sign({ userId: user.userId }, "your_jwt_secret", { expiresIn: "1h" });
+    const token = jwt.sign(
+      {
+        userId: user.userId,
+        email: user.email,
+        name: user.name,
+        role: "user"
+      },
+      "your_jwt_secret",
+      { expiresIn: "1h" }
+    );
 
     return res.json({
       message: "Login successful",
       token,
-      name: user.name,  // ✅ Correct field
+      name: user.name,
       role: "user",
+      email: user.email // ✅ SEND THIS!
     });
   } catch (error) {
     console.error(error);
@@ -111,10 +122,17 @@ router.post("/login", async (req, res) => {
   }
 });
 
+
 // In routes/employees.js
+// ✅ POST: Reset password with custom value
 router.post("/reset-password/:id", async (req, res) => {
   try {
-    const newPassword = Math.random().toString(36).slice(2, 10); // Generate random 8-char password
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ message: "Password must be at least 4 characters long" });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     const updated = await Employee.findByIdAndUpdate(
@@ -125,7 +143,7 @@ router.post("/reset-password/:id", async (req, res) => {
 
     if (!updated) return res.status(404).json({ message: "User not found" });
 
-    res.json({ message: "Password reset", newPassword }); // You can email it instead
+    res.json({ message: "Password reset successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
