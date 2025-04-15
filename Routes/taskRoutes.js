@@ -1,14 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const Task = require("../Models/Task");
+const { io, userSocketMap } = require("../server");
 
 // Create a new task
 router.post("/", async (req, res) => {
   try {
+    console.log("Received Task Body:", req.body);
     const task = new Task(req.body);
-    await task.save();
+    // await task.save();
+    const savedTask = await task.save();
+
+// 🔌 Access socket.io and userSocketMap from app
+const io = req.app.get("io");
+const userSocketMap = req.app.get("userSocketMap");
+
+const userEmail = savedTask?.assignee?.email;
+
+if (userEmail && userSocketMap[userEmail]) {
+  io.to(userSocketMap[userEmail]).emit("new-task", savedTask);
+  console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
+}
     res.status(201).json({ message: "Task created", task });
   } catch (error) {
+    console.error("Error saving task:", error);
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
