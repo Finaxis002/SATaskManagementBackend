@@ -1,61 +1,61 @@
 const express = require("express");
 const router = express.Router();
-const Task = require("../Models/Task");
+
+const Task = require("../models/Task");
 
 // Create a new task
-router.post("/assign-task", async (req, res) => {
-  const { name, due, completed, assignedTo, assignedToName, column } = req.body;
-
-  if (!name || !due) {
-    return res.status(400).json({ message: "Task name and due date are required" });
-  }
-
+router.post("/", async (req, res) => {
   try {
-    const task = new Task({
-      name,
-      due,
-      completed: completed || false,
-      assignedTo,
-      assignedToName,
-      column,
-    });
-
-    const savedTask = await task.save();
-    res.status(201).json({ message: "Task created", task: savedTask });
+    const task = new Task(req.body);
+    await task.save();
+    res.status(201).json({ message: "Task created", task });
   } catch (error) {
-    console.error("Error creating task:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Failed to create task", error });
   }
 });
 
-// Optional: Get all tasks
+// Get all tasks
 router.get("/", async (req, res) => {
   try {
-    const tasks = await Task.find().populate("assignedTo", "name email");
+    const tasks = await Task.find();
     res.json(tasks);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch tasks" });
+    res.status(500).json({ message: "Failed to fetch tasks", error });
   }
 });
 
-router.post("/create", async (req, res) => {
-  const { name, due, completed, assignedTo, assignedToName, column } = req.body;
+//complete flag API
+router.patch('/:id', async (req, res) => {
+    const { id } = req.params;
+    const { completed } = req.body;
+  
+    try {
+      const updatedTask = await Task.findByIdAndUpdate(
+        id,
+        { completed },
+        { new: true } // return the updated document
+      );
+  
+      if (!updatedTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+  
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Failed to update task", error);
+      res.status(500).json({ message: "Server error while updating task" });
+    }
+  });
 
+  
+// Delete a task (optional)
+router.delete("/:id", async (req, res) => {
   try {
-    const task = new Task({
-      name,
-      due,
-      completed: completed || false,
-      assignedTo,
-      assignedToName,
-      column,
-    });
+    await Task.findByIdAndDelete(req.params.id);
+    res.json({ message: "Task deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete task", error });
 
-    const saved = await task.save();
-    res.status(201).json({ message: "Task saved", task: saved });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to save task" });
   }
 });
 

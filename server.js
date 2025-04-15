@@ -4,7 +4,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require("./Config/db")
 const emploeeRoutes = require ("./Routes/employeeRoutes")
-const taskRoutes = require("./Routes/taskRoutes")
+
+const taskRoutes = require('./Routes/taskRoutes')
+
 const cookieParser = require("cookie-parser");
 
 
@@ -27,6 +29,9 @@ app.use(cors({
 
 
 app.use("/api/employees", emploeeRoutes);
+app.use('/api/tasks', taskRoutes)
+
+
 
 app.use("/api/tasks", taskRoutes);
 
