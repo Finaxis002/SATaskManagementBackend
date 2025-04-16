@@ -14,11 +14,29 @@ const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log("🟢 Socket connected:", socket.id);
 
+    // socket.on("register", (email) => {
+    //   userSocketMap[email] = socket.id;
+    //   console.log(`📌 Registered ${email} with socket ${socket.id}`);
+    // });
     socket.on("register", (email) => {
-      userSocketMap[email] = socket.id;
-      console.log(`📌 Registered ${email} with socket ${socket.id}`);
+      if (!userSocketMap[email]) {
+        userSocketMap[email] = socket.id;  // Only register if not already registered
+        console.log(`📌 Registered ${email} with socket ${socket.id}`);
+      } else {
+        console.log(`📌 ${email} is already registered with socket ${socket.id}`);
+      }
     });
+  
 
+    // socket.on("disconnect", () => {
+    //   const userEmail = Object.keys(userSocketMap).find(
+    //     (key) => userSocketMap[key] === socket.id
+    //   );
+    //   if (userEmail) {
+    //     delete userSocketMap[userEmail];
+    //     console.log(`❌ Removed ${userEmail} on disconnect`);
+    //   }
+    // });
     socket.on("disconnect", () => {
       const userEmail = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === socket.id
