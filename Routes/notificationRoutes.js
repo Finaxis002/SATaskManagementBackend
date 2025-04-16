@@ -83,13 +83,11 @@ const { io, userSocketMap } = require("../server");
 router.post("/", async (req, res) => {
   try {
     const { recipientEmail, message, taskId } = req.body;
+    console.log("Received data for new notification:", req.body);
 
-    // Check if all required fields are present
     if (!recipientEmail || !message || !taskId) {
-      return res.status(400).json({ message: "Missing required fields." });
+      return res.status(400).json({ message: "All fields (recipientEmail, message, taskId) are required" });
     }
-
-    console.log("Received notification data:", req.body);  // Log the received data
 
     // Save the notification to the database
     const newNotification = new Notification({
@@ -100,9 +98,12 @@ router.post("/", async (req, res) => {
 
     await newNotification.save();
 
-    // Emit to the user via socket.io if they are connected
+    // Check if userSocketMap contains the recipientEmail
     if (userSocketMap[recipientEmail]) {
       io.to(userSocketMap[recipientEmail]).emit("new-task", newNotification);
+      console.log(`Notification sent to ${recipientEmail}`);
+    } else {
+      console.warn(`No socket found for ${recipientEmail}. Notification will not be sent to socket.`);
     }
 
     res.status(201).json({ message: "Notification sent", notification: newNotification });

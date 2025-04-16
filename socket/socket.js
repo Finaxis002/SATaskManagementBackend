@@ -22,6 +22,7 @@ const initSocket = (httpServer) => {
       if (!userSocketMap[email]) {
         userSocketMap[email] = socket.id;  // Only register if not already registered
         console.log(`📌 Registered ${email} with socket ${socket.id}`);
+        console.log('Current userSocketMap:', userSocketMap);
       } else {
         console.log(`📌 ${email} is already registered with socket ${socket.id}`);
       }
