@@ -18,11 +18,18 @@ const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log("🟢 Socket connected:", socket.id);
 
-    // Register user
+
     socket.on("register", (email) => {
-      userSocketMap[email] = socket.id;
-      console.log(`📌 Registered ${email} with socket ${socket.id}`);
+      if (!userSocketMap[email]) {
+        userSocketMap[email] = socket.id;  // Only register if not already registered
+        console.log(`📌 Registered ${email} with socket ${socket.id}`);
+        console.log('Current userSocketMap:', userSocketMap);
+      } else {
+        console.log(`📌 ${email} is already registered with socket ${socket.id}`);
+      }
     });
+  
+
 
     // Save and broadcast new message
     socket.on("sendMessage", async (msg) => {
@@ -45,6 +52,7 @@ const initSocket = (httpServer) => {
     });
 
     // Handle disconnect
+
     socket.on("disconnect", () => {
       const email = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === socket.id
