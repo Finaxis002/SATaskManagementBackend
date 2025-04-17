@@ -9,7 +9,7 @@ const taskRoutes = require("./Routes/taskRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
 const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
-const path = require("path"); // <-- Import path
+const {sendEmail} = require("./email/emailService")
 
 
 dotenv.config(); // Load .env
@@ -36,12 +36,6 @@ app.use(
   })
 );
 
-app.use((req, res, next) => {
-  console.log(`Received request: ${req.method} ${req.url}`);
-  next();
-});
-
-
 app.use("/api/employees", emploeeRoutes);
 // app.use('/api/tasks', taskRoutes)
 app.use("/api/tasks", taskRoutes);
@@ -57,14 +51,6 @@ app.set("userSocketMap", userSocketMap);
 // Routes
 app.get("/", (req, res) => {
   res.send("Task Management Backend is running!");
-});
-
-// Serve static files from the React build folder
-app.use(express.static(path.join(__dirname, 'build')));
-
-// Catch-all handler to serve the React app for all routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 
