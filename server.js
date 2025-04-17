@@ -4,12 +4,11 @@ const http = require("http");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./Config/db");
-const emploeeRoutes = require("./Routes/employeeRoutes");
-const taskRoutes = require("./Routes/taskRoutes");
-const notificationRoutes = require("./Routes/notificationRoutes");
-const cookieParser = require("cookie-parser");
-const messageRoute = require("./Routes/messages");
-const {sendEmail} = require("./email/emailService")
+// const emploeeRoutes = require("./Routes/employeeRoutes");
+// // const taskRoutes = require("./Routes/taskRoutes");
+// const notificationRoutes = require("./Routes/notificationRoutes");
+// const cookieParser = require("cookie-parser");
+// const messageRoute = require("./Routes/messages");
 
 
 dotenv.config(); // Load .env
@@ -35,11 +34,11 @@ app.use(
   })
 );
 
-app.use("/api/employees", emploeeRoutes);
-// app.use('/api/tasks', taskRoutes)
-// app.use("/api/tasks", taskRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api", messageRoute);
+// app.use("/api/employees", emploeeRoutes);
+// // app.use('/api/tasks', taskRoutes)
+// // app.use("/api/tasks", taskRoutes);
+// app.use("/api/notifications", notificationRoutes);
+// app.use("/api", messageRoute);
 
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
