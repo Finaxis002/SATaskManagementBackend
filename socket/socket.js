@@ -18,23 +18,25 @@ const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log("🟢 Socket connected:", socket.id);
 
+    // Register socket with user email
     socket.on("register", (email) => {
       userSocketMap[email] = socket.id;
       console.log(`📌 Registered ${email} with socket ${socket.id}`);
     });
 
+    // Listen for messages and broadcast them
     socket.on("sendMessage", (msg) => {
-      io.emit("receiveMessage", msg); // ✅ Send to all including sender
-      io.emit("inboxCountUpdated"); 
+      io.emit("receiveMessage", msg); // Send to all connected clients
+      io.emit("inboxCountUpdated"); // Trigger inbox count update to all clients
       console.log("📨 Broadcasting message:", msg);
     });
 
-     // ✅ When inbox is read, reset count
-     socket.on("inboxRead", () => {
-      io.emit("inboxCountUpdated");  // let all clients update their badge
+    // Reset inbox count when it's read
+    socket.on("inboxRead", () => {
+      io.emit("inboxCountUpdated"); // Notify all clients to reset their inbox count
     });
-  
 
+    // Handle socket disconnections
     socket.on("disconnect", () => {
       const email = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === socket.id
@@ -44,9 +46,6 @@ const initSocket = (httpServer) => {
         console.log(`❌ Disconnected: ${email}`);
       }
     });
-
-   
-    
   });
 
   return { io, userSocketMap };
