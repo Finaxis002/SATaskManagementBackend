@@ -37,7 +37,7 @@ app.use(
 
 app.use("/api/employees", emploeeRoutes);
 // app.use('/api/tasks', taskRoutes)
-app.use("/api/tasks", taskRoutes);
+// app.use("/api/tasks", taskRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api", messageRoute);
 
