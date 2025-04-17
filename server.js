@@ -53,6 +53,9 @@ app.get("/", (req, res) => {
   res.send("Task Management Backend is running!");
 });
 
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 
 
 
