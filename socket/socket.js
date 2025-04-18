@@ -25,15 +25,14 @@ const initSocket = (httpServer) => {
 
     socket.on("sendMessage", (msg) => {
       io.emit("receiveMessage", msg); // ✅ Send to all including sender
-      io.emit("inboxCountUpdated"); 
+      io.emit("inboxCountUpdated");
       console.log("📨 Broadcasting message:", msg);
     });
 
-     // ✅ When inbox is read, reset count
-     socket.on("inboxRead", () => {
-      io.emit("inboxCountUpdated");  // let all clients update their badge
+    // ✅ When inbox is read, reset count
+    socket.on("inboxRead", () => {
+      io.emit("inboxCountUpdated"); // let all clients update their badge
     });
-  
 
     socket.on("disconnect", () => {
       const email = Object.keys(userSocketMap).find(
@@ -44,9 +43,6 @@ const initSocket = (httpServer) => {
         console.log(`❌ Disconnected: ${email}`);
       }
     });
-
-   
-    
   });
 
   return { io, userSocketMap };
