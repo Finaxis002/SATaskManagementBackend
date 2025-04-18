@@ -16,7 +16,12 @@ const TaskSchema = new mongoose.Schema({
   },
   assignedToName: { type: String },
   column: { type: String }, // For example: 'Recently assigned', 'Do today', etc.
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  completedAt: { type: Date },  // Add this field
+  completedBy: { 
+    name: { type: String },
+    email: { type: String }
+  }
 });
 
 module.exports = mongoose.model('Task', TaskSchema);

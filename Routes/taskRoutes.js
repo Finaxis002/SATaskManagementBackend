@@ -41,27 +41,85 @@ router.get("/", async (req, res) => {
 });
 
 //complete flag API
+// router.patch('/:id', async (req, res) => {
+//     const { id } = req.params;
+//     const { completed } = req.body;
+  
+//     try {
+//       const updatedTask = await Task.findByIdAndUpdate(
+//         id,
+//         { completed },
+//         { new: true } // return the updated document
+//       );
+  
+//       if (!updatedTask) {
+//         return res.status(404).json({ message: "Task not found" });
+//       }
+  
+//       res.json(updatedTask);
+//     } catch (error) {
+//       console.error("Failed to update task", error);
+//       res.status(500).json({ message: "Server error while updating task" });
+//     }
+//   });
 router.patch('/:id', async (req, res) => {
-    const { id } = req.params;
-    const { completed } = req.body;
-  
-    try {
-      const updatedTask = await Task.findByIdAndUpdate(
-        id,
-        { completed },
-        { new: true } // return the updated document
-      );
-  
-      if (!updatedTask) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-  
-      res.json(updatedTask);
-    } catch (error) {
-      console.error("Failed to update task", error);
-      res.status(500).json({ message: "Server error while updating task" });
+  const { id } = req.params;
+  const { completed } = req.body;
+
+  try {
+    const originalTask = await Task.findById(id);
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      { 
+        completed,
+        completedAt: completed ? new Date() : null,
+        completedBy: completed ? {
+          name: req.user.name,
+          email: req.user.email
+        } : null
+      },
+      { new: true }
+    );
+
+    if (!updatedTask) {
+      return res.status(404).json({ message: "Task not found" });
     }
-  });
+
+    // Debugging logs
+    console.log('Task completion status:', {
+      wasCompleted: originalTask.completed,
+      nowCompleted: updatedTask.completed
+    });
+
+    if (completed && !originalTask.completed) {
+      const io = req.app.get('io');
+      console.log('Emitting task-completed event to admins');
+      
+      // Get all admin emails from your database
+      const admins = await User.find({ role: 'admin' });
+      const adminEmails = admins.map(admin => admin.email);
+      
+      // Emit to all admins
+      adminEmails.forEach(adminEmail => {
+        const adminSocketId = userSocketMap[adminEmail];
+        if (adminSocketId) {
+          io.to(adminSocketId).emit('task-completed', {
+            taskName: updatedTask.name,
+            userName: req.user.name,
+            date: new Date().toLocaleDateString(),
+            adminEmail: adminEmail
+          });
+          console.log(`Sent notification to admin: ${adminEmail}`);
+        }
+      });
+    }
+
+    res.json(updatedTask);
+  } catch (error) {
+    console.error("Failed to update task", error);
+    res.status(500).json({ message: "Server error while updating task" });
+  }
+});
 
   
 // Delete a task (optional)
