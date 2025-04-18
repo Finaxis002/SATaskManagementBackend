@@ -19,9 +19,10 @@ const initSocket = (httpServer) => {
     console.log("🟢 Socket connected:", socket.id);
 
     // Register socket with user email
-    socket.on("register", (email) => {
+    socket.on("register", (email, username) => {
       userSocketMap[email] = socket.id;
-      console.log(`📌 Registered ${email} with socket ${socket.id}`);
+      userSocketMap[socket.id] = username; // Store socket ID with the user's name
+      console.log(`${username} connected`);
     });
 
     // Listen for messages and broadcast them
@@ -34,6 +35,18 @@ const initSocket = (httpServer) => {
     // Reset inbox count when it's read
     socket.on("inboxRead", () => {
       io.emit("inboxCountUpdated"); // Notify all clients to reset their inbox count
+    });
+
+    // Handle private messages
+    socket.on("sendPrivateMessage", (data) => {
+      const { receiver, message } = data;
+      const receiverSocket = Object.keys(users).find(
+        (socketId) => users[socketId] === receiver
+      );
+
+      if (receiverSocket) {
+        io.to(receiverSocket).emit("receivePrivateMessage", message);
+      }
     });
 
     // Handle socket disconnections
