@@ -9,7 +9,6 @@ const taskRoutes = require("./Routes/taskRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
 const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
-const {sendEmail} = require("./email/emailService")
 
 
 dotenv.config(); // Load .env
@@ -53,6 +52,7 @@ app.get("/", (req, res) => {
 });
 
 // Endpoint to send an email
+
 
 
 // Start server
