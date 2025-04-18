@@ -9,6 +9,7 @@ const initSocket = (httpServer) => {
       origin: [
         "http://localhost:5173", // Your local frontend URL
         "https://task-management-software-phi.vercel.app", // Production frontend URL
+        "https://sataskmanagement.onrender.com"
       ],
       methods: ["GET", "POST"],
       credentials: true,
