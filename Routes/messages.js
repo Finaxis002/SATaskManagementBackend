@@ -20,6 +20,30 @@ router.post("/messages", async (req, res) => {
   }
 });
 
+
+// POST route to send a private message
+router.post("/private-message", async (req, res) => {
+  const { sender, receiver, text } = req.body;
+
+  try {
+    const newMessage = new Message({
+      sender,
+      receiver,
+      text,
+      timestamp: new Date().toLocaleTimeString(),
+    });
+    await newMessage.save();
+
+    // Emit private message to the user via Socket.IO
+    io.to(receiver).emit("receivePrivateMessage", newMessage); // Emit to the specific user
+
+    res.status(200).json(newMessage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // ✅ GET - Fetch all chat messages from MongoDB
 router.get("/messages", async (req, res) => {
   try {

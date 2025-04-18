@@ -5,6 +5,7 @@ const chatMessageSchema = new mongoose.Schema({
   text: { type: String, required: true },
   timestamp: { type: String, required: true },
   read: { type: Boolean, default: false }, // ✅ important
+  receiver: String, // New field for the recipient
 }, { timestamps: true });
 
 module.exports = mongoose.model("ChatMessage", chatMessageSchema);
