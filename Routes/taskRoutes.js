@@ -62,65 +62,110 @@ router.get("/", async (req, res) => {
 //       res.status(500).json({ message: "Server error while updating task" });
 //     }
 //   });
-router.patch('/:id', async (req, res) => {
-  const { id } = req.params;
-  const { completed } = req.body;
+// In your taskRoutes.js
+// router.patch('/:id', async (req, res) => {
+//   const { id } = req.params;
+//   const { completed } = req.body;
 
+//   try {
+//     console.log('Attempting to update task:', id);
+//     console.log('Request user:', req.user); // Check if user exists
+//     console.log('Request body:', req.body);
+
+//     const updateData = {
+//       completed,
+//       ...(completed && {
+//         completedAt: new Date(),
+//         completedBy: {
+//           name: req.user?.name || 'Unknown',
+//           email: req.user?.email || 'unknown@example.com'
+//         }
+//       })
+//     };
+
+//     const updatedTask = await Task.findByIdAndUpdate(
+//       id,
+//       updateData,
+//       { 
+//         new: true,
+//         runValidators: true,
+//         context: 'query' // Helps with certain validation issues
+//       }
+//     );
+
+//     if (!updatedTask) {
+//       return res.status(404).json({ message: "Task not found" });
+//     }
+
+//     console.log('Successfully updated task:', updatedTask);
+//     return res.json(updatedTask);
+
+//   } catch (error) {
+//     console.error('FULL ERROR DETAILS:');
+//     console.error('Name:', error.name);
+//     console.error('Message:', error.message);
+//     console.error('Stack:', error.stack);
+    
+//     if (error.name === 'ValidationError') {
+//       console.error('Validation Errors:', error.errors);
+//     }
+    
+//     if (error.name === 'CastError') {
+//       console.error('Cast Error Path:', error.path);
+//       console.error('Cast Error Value:', error.value);
+//     }
+
+//     return res.status(500).json({ 
+//       message: "Server error while updating task",
+//       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
+router.patch('/:id', async (req, res) => {
   try {
-    const originalTask = await Task.findById(id);
+    const { id } = req.params;
+    const { completed } = req.body;
+    const userEmail = req.headers['x-user-email'];
+    const userName = req.headers['x-user-name'];
+
+    const updateData = {
+      completed,
+      ...(completed && {
+        completedAt: new Date(),
+        completedBy: {
+          name: userName,
+          email: userEmail
+        }
+      })
+    };
+
     const updatedTask = await Task.findByIdAndUpdate(
       id,
-      { 
-        completed,
-        completedAt: completed ? new Date() : null,
-        completedBy: completed ? {
-          name: req.user.name,
-          email: req.user.email
-        } : null
-      },
+      updateData,
       { new: true }
     );
 
-    if (!updatedTask) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    // Debugging logs
-    console.log('Task completion status:', {
-      wasCompleted: originalTask.completed,
-      nowCompleted: updatedTask.completed
-    });
-
-    if (completed && !originalTask.completed) {
+    // Notify admin using existing socket implementation
+    if (completed) {
       const io = req.app.get('io');
-      console.log('Emitting task-completed event to admins');
+      const adminSocketId = req.app.get('userSocketMap')['admin@example.com']; // Your admin email
       
-      // Get all admin emails from your database
-      const admins = await User.find({ role: 'admin' });
-      const adminEmails = admins.map(admin => admin.email);
-      
-      // Emit to all admins
-      adminEmails.forEach(adminEmail => {
-        const adminSocketId = userSocketMap[adminEmail];
-        if (adminSocketId) {
-          io.to(adminSocketId).emit('task-completed', {
-            taskName: updatedTask.name,
-            userName: req.user.name,
-            date: new Date().toLocaleDateString(),
-            adminEmail: adminEmail
-          });
-          console.log(`Sent notification to admin: ${adminEmail}`);
-        }
-      });
+      if (adminSocketId) {
+        io.to(adminSocketId).emit('task-completed', {
+          taskName: updatedTask.name,
+          userName: userName,
+          date: new Date().toLocaleDateString()
+        });
+        console.log(`📢 Admin notified: ${updatedTask.name} completed`);
+      }
     }
 
     res.json(updatedTask);
   } catch (error) {
-    console.error("Failed to update task", error);
-    res.status(500).json({ message: "Server error while updating task" });
+    console.error('Task update error:', error);
+    res.status(500).json({ message: error.message });
   }
 });
-
   
 // Delete a task (optional)
 router.delete("/:id", async (req, res) => {
