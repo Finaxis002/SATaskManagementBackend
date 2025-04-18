@@ -1,7 +1,7 @@
 const { Server } = require("socket.io");
-const ChatMessage = require("../Models/ChatMessage");
 
-const userSocketMap = {}; // email => socket.id
+const userSocketMap = {};  // email => socket.id
+const socketUserMap = {};  // socket.id => email (for reverse lookup)
 
 const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -18,53 +18,39 @@ const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log("🟢 Socket connected:", socket.id);
 
-
     // Register socket with user email
     socket.on("register", (email, username) => {
-
-      userSocketMap[email] = socket.id;
-      userSocketMap[socket.id] = username; // Store socket ID with the user's name
+      userSocketMap[email] = socket.id;   // email => socket.id
+      socketUserMap[socket.id] = email;   // socket.id => email
       console.log(`${username} connected`);
     });
 
+    // Handle sending a message to all users (broadcast)
     socket.on("sendMessage", (msg) => {
       io.emit("receiveMessage", msg); // ✅ Send to all including sender
       io.emit("inboxCountUpdated");
       console.log("📨 Broadcasting message:", msg);
     });
 
-    // ✅ When inbox is read, reset count
+    // When inbox is read, reset count
     socket.on("inboxRead", () => {
       io.emit("inboxCountUpdated"); // let all clients update their badge
     });
-
-
-    // Handle private messages
-    socket.on("sendPrivateMessage", (data) => {
-      const { receiver, message } = data;
-      const receiverSocket = Object.keys(users).find(
-        (socketId) => users[socketId] === receiver
-      );
-
-      if (receiverSocket) {
-        io.to(receiverSocket).emit("receivePrivateMessage", message);
-      }
-    });
+  
 
     // Handle socket disconnections
-
     socket.on("disconnect", () => {
-      const email = Object.keys(userSocketMap).find(
-        (key) => userSocketMap[key] === socket.id
-      );
+      const email = socketUserMap[socket.id]; // Retrieve email from socket id
+
       if (email) {
-        delete userSocketMap[email];
+        delete userSocketMap[email]; // Remove email => socket mapping
+        delete socketUserMap[socket.id]; // Remove socket => email mapping
         console.log(`❌ Disconnected: ${email}`);
       }
     });
   });
 
-  return { io, userSocketMap };
+  return { io, userSocketMap, socketUserMap };
 };
 
 module.exports = initSocket;
