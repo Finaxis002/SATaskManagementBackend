@@ -4,82 +4,7 @@ const router = express.Router();
 const Notification = require("../Models/Notification");
 const { io, userSocketMap } = require("../server");
 
-// Create a new notification (Triggered when a task is assigned)
-// router.post("/", async (req, res) => {
-//   try {
-//     const { recipientEmail, message, taskId } = req.body;
-// // Validate if all fields are present
-// if (!recipientEmail || !message || !taskId) {
-//   return res.status(400).json({ message: "All fields (recipientEmail, message, taskId) are required" });
-// }
-//     console.log('Received data for new notification:',req.body)
 
-//     // Save the notification to the database
-//     const newNotification = new Notification({
-//       recipientEmail,
-//       message,
-//       taskId,
-//     });
-
-//     await newNotification.save();
-
-//     // Emit to the user via socket.io
-//     // if (userSocketMap[recipientEmail]) {
-//     //   io.to(userSocketMap[recipientEmail]).emit("new-task", newNotification);
-//     // }
-//     if (userSocketMap[recipientEmail]) {
-//       io.to(userSocketMap[recipientEmail]).emit("new-task", newNotification);
-//       console.log("Notification sent to", recipientEmail);
-//     } else {
-//       console.log("No socket found for", recipientEmail);
-//     }
-    
-
-//     res.status(201).json({ message: "Notification sent", notification: newNotification });
-//   } catch (err) {
-//     console.error("Error saving notification:", err);
-//     res.status(500).json({ message: "Failed to create notification", error: err });
-//   }
-// });
-// router.post("/", async (req, res) => {
-//   try {
-//     const { recipientEmail, message, taskId } = req.body;
-
-//     // Validate if all fields are present
-//     if (!recipientEmail || !message || !taskId) {
-//       return res.status(400).json({ message: "All fields (recipientEmail, message, taskId) are required" });
-//     }
-
-//     console.log('Received data for new notification:', req.body);
-
-//     // Save the notification to the database
-//     const newNotification = new Notification({
-//       recipientEmail,
-//       message,
-//       taskId,
-//     });
-
-//     try {
-//       const savedNotification = await newNotification.save();
-//       console.log("Notification saved:", savedNotification);
-//     } catch (err) {
-//       console.error("Error saving notification:", err);
-//       return res.status(500).json({ message: "Failed to create notification", error: err.message });
-//     }
-
-//     // Emit to the user via socket.io
-//     if (userSocketMap[recipientEmail]) {
-//       io.to(userSocketMap[recipientEmail]).emit("new-task", newNotification);
-//       console.log("Notification sent via socket to:", recipientEmail);
-//     }
-
-//     res.status(201).json({ message: "Notification sent", notification: newNotification });
-//   } catch (err) {
-//     console.error("Error in creating notification:", err);
-//     res.status(500).json({ message: "Failed to create notification", error: err.message });
-//   }
-// });
-// Create a new notification (Triggered when a task is assigned)
 router.post("/", async (req, res) => {
   try {
     const { recipientEmail, message, taskId } = req.body;
@@ -115,6 +40,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ message: "Failed to create notification", error: err });
   }
 });
+
 
 
 
@@ -167,5 +93,6 @@ router.delete("/:email", async (req, res) => {
     res.status(500).json({ message: "Failed to clear notifications", error: err });
   }
 });
+
 
 module.exports = router;

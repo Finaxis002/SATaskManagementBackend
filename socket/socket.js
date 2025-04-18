@@ -7,8 +7,8 @@ const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
       origin: [
-        "http://localhost:5173",
-        "https://task-management-software-phi.vercel.app",
+        "http://localhost:5173", // Your local frontend URL
+        "https://task-management-software-phi.vercel.app", // Production frontend URL
       ],
       methods: ["GET", "POST"],
       credentials: true,
@@ -19,39 +19,39 @@ const initSocket = (httpServer) => {
     console.log("🟢 Socket connected:", socket.id);
 
 
-    socket.on("register", (email) => {
-      if (!userSocketMap[email]) {
-        userSocketMap[email] = socket.id;  // Only register if not already registered
-        console.log(`📌 Registered ${email} with socket ${socket.id}`);
-        console.log('Current userSocketMap:', userSocketMap);
-      } else {
-        console.log(`📌 ${email} is already registered with socket ${socket.id}`);
+    // Register socket with user email
+    socket.on("register", (email, username) => {
+
+      userSocketMap[email] = socket.id;
+      userSocketMap[socket.id] = username; // Store socket ID with the user's name
+      console.log(`${username} connected`);
+    });
+
+    socket.on("sendMessage", (msg) => {
+      io.emit("receiveMessage", msg); // ✅ Send to all including sender
+      io.emit("inboxCountUpdated");
+      console.log("📨 Broadcasting message:", msg);
+    });
+
+    // ✅ When inbox is read, reset count
+    socket.on("inboxRead", () => {
+      io.emit("inboxCountUpdated"); // let all clients update their badge
+    });
+
+
+    // Handle private messages
+    socket.on("sendPrivateMessage", (data) => {
+      const { receiver, message } = data;
+      const receiverSocket = Object.keys(users).find(
+        (socketId) => users[socketId] === receiver
+      );
+
+      if (receiverSocket) {
+        io.to(receiverSocket).emit("receivePrivateMessage", message);
       }
     });
-  
 
-
-    // Save and broadcast new message
-    socket.on("sendMessage", async (msg) => {
-      try {
-        if (msg.sender.toLowerCase() === "admin" && !msg.recipient) {
-          msg.recipient = "all";
-        }
-
-        const saved = await new ChatMessage({ ...msg, read: false }).save();
-        io.emit("receiveMessage", saved); // 🔴 notify all clients
-      } catch (err) {
-        console.error("❌ Error saving message:", err.message);
-      }
-    });
-
-    // Broadcast inboxRead event
-    socket.on("inboxRead", (data) => {
-      console.log("📨 inboxRead event:", data);
-      io.emit("inboxRead", data); // ✅ notify all clients to reset
-    });
-
-    // Handle disconnect
+    // Handle socket disconnections
 
     socket.on("disconnect", () => {
       const email = Object.keys(userSocketMap).find(

@@ -20,6 +20,30 @@ router.post("/messages", async (req, res) => {
   }
 });
 
+
+// POST route to send a private message
+router.post("/private-message", async (req, res) => {
+  const { sender, receiver, text } = req.body;
+
+  try {
+    const newMessage = new Message({
+      sender,
+      receiver,
+      text,
+      timestamp: new Date().toLocaleTimeString(),
+    });
+    await newMessage.save();
+
+    // Emit private message to the user via Socket.IO
+    io.to(receiver).emit("receivePrivateMessage", newMessage); // Emit to the specific user
+
+    res.status(200).json(newMessage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // ✅ GET - Fetch all chat messages from MongoDB
 router.get("/messages", async (req, res) => {
   try {
@@ -47,20 +71,8 @@ router.get("/messages", async (req, res) => {
 // In messages.js route
 router.get("/unread-count", async (req, res) => {
   try {
-    const { name, role } = req.query;
-
-    let filter = {};
-
-    if (role === "admin") {
-      filter = { sender: { $ne: "admin" }, read: false };
-    } else {
-      filter = {
-        recipient: { $in: [name, "all"] },
-        read: false,
-      };
-    }
-
-    const count = await ChatMessage.countDocuments(filter);
+    // 🔁 Simply count all unread messages (for everyone)
+    const count = await ChatMessage.countDocuments({ read: false });
     res.json({ count });
   } catch (err) {
     console.error("❌ Failed to get unread count:", err.message);
@@ -69,30 +81,19 @@ router.get("/unread-count", async (req, res) => {
 });
 
 
-
 // PUT /api/mark-read
 router.put("/mark-read", async (req, res) => {
   try {
-    const { name, role } = req.body;
+    // 🔁 Mark all unread messages as read, for all users
+    await ChatMessage.updateMany({ read: false }, { $set: { read: true } });
 
-    let filter = {};
-
-    if (role === "admin") {
-      // Admin marks all unread user messages as read
-      filter = { sender: { $ne: "admin" }, read: false };
-    } else {
-      // User marks all messages sent to them (or broadcasted) as read
-      filter = { recipient: { $in: [name, "all"] }, read: false };
-    }
-
-    await ChatMessage.updateMany(filter, { $set: { read: true } });
-
-    res.status(200).json({ message: "Messages marked as read" });
+    res.status(200).json({ message: "All messages marked as read" });
   } catch (err) {
     console.error("❌ Error marking messages as read:", err.message);
     res.status(500).json({ message: "Failed to mark messages as read" });
   }
 });
+
 
 
 

@@ -10,6 +10,7 @@ const notificationRoutes = require("./Routes/notificationRoutes");
 const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
 
+
 dotenv.config(); // Load .env
 
 const app = express();
@@ -49,6 +50,10 @@ app.set("userSocketMap", userSocketMap);
 app.get("/", (req, res) => {
   res.send("Task Management Backend is running!");
 });
+
+// Endpoint to send an email
+
+
 
 // Start server
 const PORT = process.env.PORT || 5000;
