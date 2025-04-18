@@ -120,6 +120,81 @@ router.get("/", async (req, res) => {
 
 //complete flag API
 // router.patch('/:id', async (req, res) => {
+
+
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completed } = req.body;
+    const userEmail = req.headers['x-user-email'];
+    const userName = req.headers['x-user-name'];
+
+    const updateData = {
+      completed,
+      ...(completed && {
+        completedAt: new Date(),
+        completedBy: {
+          name: userName,
+          email: userEmail
+        }
+      })
+    };
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    );
+
+    // Notify admin using existing socket implementation
+    if (completed) {
+      const io = req.app.get('io');
+      const userSocketMap = req.app.get('userSocketMap');
+      
+      // Find all admin users (assuming admin emails contain 'admin')
+      const adminEntries = Object.entries(userSocketMap).filter(([email]) => 
+        email.includes('admin') || email.includes('administrator')
+      );
+
+      // Send notification to all admins
+      adminEntries.forEach(([adminEmail, adminSocketId]) => {
+        io.to(adminSocketId).emit('task-completed', {
+          taskName: updatedTask.name,
+          userName: userName,
+          date: new Date().toISOString()  // Use ISO string for consistency
+        });
+        console.log(`📢 Admin (${adminEmail}) notified: ${updatedTask.name} completed`);
+      });
+    }
+
+// //   const { id } = req.params;
+// //   const { name, due, assignee, completed } = req.body;
+
+// //   try {
+// //       // Update the task with all necessary fields
+// //       const updatedTask = await Task.findByIdAndUpdate(
+// //           id,
+// //           { name, due, assignee, completed },
+// //           { new: true } // return the updated document
+// //       );
+
+// //       if (!updatedTask) {
+// //           return res.status(404).json({ message: "Task not found" });
+// //       }
+
+// //       // Emit the updated task to all connected clients
+// //       const io = req.app.get("io");
+// //       io.emit("task-updated", updatedTask); // Emit task update event
+
+// //       res.json(updatedTask);
+// //   } catch (error) {
+// //       console.error("Failed to update task", error);
+// //       res.status(500).json({ message: "Server error while updating task" });
+// //   }
+// // });
+
+// // Complete flag API to update task completion and send email
+// router.patch('/:id', async (req, res) => {
 //   const { id } = req.params;
 //   const { name, due, assignee, completed } = req.body;
 
@@ -139,6 +214,24 @@ router.get("/", async (req, res) => {
 //       const io = req.app.get("io");
 //       io.emit("task-updated", updatedTask); // Emit task update event
 
+//       // Send email to the assignee regarding the task update
+//       if (updatedTask.assignee && updatedTask.assignee.email) {
+//           const subject = `Task Updated: ${updatedTask.name}`;
+//           const text = `
+//               Hello ${updatedTask.assignee.name},\n\n
+//               Your task has been updated:\n
+//               Task: ${updatedTask.name}\n
+//               Due Date: ${updatedTask.due}\n
+//               Status: ${completed ? "Completed" : "Not Completed"}\n\n
+//               Best regards,\n
+//               Task Management System
+//           `;
+//           await sendEmail(updatedTask.assignee.email, subject, text);  // Send email to the assignee
+//           console.log(`📨 Email sent to: ${updatedTask.assignee.email}`);
+//       } else {
+//           console.log("No email found for the assignee");
+//       }
+
 //       res.json(updatedTask);
 //   } catch (error) {
 //       console.error("Failed to update task", error);
@@ -146,52 +239,13 @@ router.get("/", async (req, res) => {
 //   }
 // });
 
-// Complete flag API to update task completion and send email
-router.patch('/:id', async (req, res) => {
-  const { id } = req.params;
-  const { name, due, assignee, completed } = req.body;
 
-  try {
-      // Update the task with all necessary fields
-      const updatedTask = await Task.findByIdAndUpdate(
-          id,
-          { name, due, assignee, completed },
-          { new: true } // return the updated document
-      );
-
-      if (!updatedTask) {
-          return res.status(404).json({ message: "Task not found" });
-      }
-
-      // Emit the updated task to all connected clients
-      const io = req.app.get("io");
-      io.emit("task-updated", updatedTask); // Emit task update event
-
-      // Send email to the assignee regarding the task update
-      if (updatedTask.assignee && updatedTask.assignee.email) {
-          const subject = `Task Updated: ${updatedTask.name}`;
-          const text = `
-              Hello ${updatedTask.assignee.name},\n\n
-              Your task has been updated:\n
-              Task: ${updatedTask.name}\n
-              Due Date: ${updatedTask.due}\n
-              Status: ${completed ? "Completed" : "Not Completed"}\n\n
-              Best regards,\n
-              Task Management System
-          `;
-          await sendEmail(updatedTask.assignee.email, subject, text);  // Send email to the assignee
-          console.log(`📨 Email sent to: ${updatedTask.assignee.email}`);
-      } else {
-          console.log("No email found for the assignee");
-      }
-
-      res.json(updatedTask);
+    res.json(updatedTask);
   } catch (error) {
-      console.error("Failed to update task", error);
-      res.status(500).json({ message: "Server error while updating task" });
+    console.error('Task update error:', error);
+    res.status(500).json({ message: error.message });
   }
 });
-
   
 // Delete a task (optional)
 router.delete("/:id", async (req, res) => {
