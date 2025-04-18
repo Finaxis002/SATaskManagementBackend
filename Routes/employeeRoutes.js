@@ -64,11 +64,18 @@ router.put("/:id", async (req, res) => {
   const { name, email, position, department, userId, role } = req.body;
 
   // Validate input
-  if (!name || !email || !position || !userId) {
+  if (!name || !email || !position || !userId || !role) {
     return res.status(400).json({ message: "All fields are required!" });
   }
 
+  // Check if email is in the right format
+  const emailRegex = /^[\w-\.]+@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Invalid email format." });
+  }
+
   try {
+    // Find the employee by ID
     const employee = await Employee.findById(req.params.id);
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
@@ -80,15 +87,22 @@ router.put("/:id", async (req, res) => {
     employee.position = position;
     employee.department = department;
     employee.userId = userId;
-    employee.role = role || employee.role; // Update role if provided
+    employee.role = role || employee.role;  // Update role if provided
 
+    // Save the updated employee to the database
     const updatedEmployee = await employee.save();
-    res.json({ message: "Employee updated successfully", employee: updatedEmployee });
+    
+    res.json({
+      message: "Employee updated successfully",
+      employee: updatedEmployee
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error updating employee", error: err });
+    console.error("Error updating employee:", err);
+    res.status(500).json({ message: "Error updating employee", error: err.message });
   }
 });
+
+
 
 // DELETE /api/employees/:id - Delete employee
 router.delete("/:id", async (req, res) => {
