@@ -218,4 +218,26 @@ router.get("/group-members/:group", async (req, res) => {
   }
 });
 
+
+// ✅ NEW ROUTE to fetch all group members
+router.get("/group-members", async (req, res) => {
+  try {
+    const allEmployees = await Employee.find({}, "name department");
+    const grouped = {};
+
+    allEmployees.forEach((emp) => {
+      if (!grouped[emp.department]) {
+        grouped[emp.department] = [];
+      }
+      grouped[emp.department].push(emp.name);
+    });
+
+    res.json({ groupMembers: grouped });
+  } catch (err) {
+    console.error("Error fetching group members:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;
