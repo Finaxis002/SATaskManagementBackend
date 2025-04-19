@@ -130,12 +130,12 @@ router.post("/login", async (req, res) => {
   if (userId === adminUserId && password === adminPassword) {
     const token = jwt.sign({ userId: adminUserId, role: "admin" }, "your_jwt_secret", { expiresIn: "1h" });
     return res.json({
-      message: "Login successful",
+      message: "Admin login successful",
       token,
-      name: user.name,
-      role: user.role || "user",
-      email: user.email,
-      department: user.department // ✅ this is what your frontend needs
+      name: "Admin",
+      role: "admin",
+      email: "admin@example.com",
+      department: "Administrator" // ✅ optional, for consistency
     });
   }
 
@@ -155,7 +155,7 @@ router.post("/login", async (req, res) => {
         userId: user.userId,
         email: user.email,
         name: user.name,
-        role: user.role || "user" // Include role in the token
+        role: user.role || "user"
       },
       "your_jwt_secret",
       { expiresIn: "1h" }
@@ -165,14 +165,16 @@ router.post("/login", async (req, res) => {
       message: "Login successful",
       token,
       name: user.name,
-      role: user.role || "user", // Ensure correct role is included
-      email: user.email
+      role: user.role || "user",
+      email: user.email,
+      department: user.department // ✅ Added here
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // POST /api/employees/reset-password/:id - Reset password
 router.post("/reset-password/:id", async (req, res) => {
