@@ -130,11 +130,12 @@ router.post("/login", async (req, res) => {
   if (userId === adminUserId && password === adminPassword) {
     const token = jwt.sign({ userId: adminUserId, role: "admin" }, "your_jwt_secret", { expiresIn: "1h" });
     return res.json({
-      message: "Admin login successful",
+      message: "Login successful",
       token,
-      name: "Admin",
-      role: "admin",
-      email: "admin@example.com"
+      name: user.name,
+      role: user.role || "user",
+      email: user.email,
+      department: user.department // ✅ this is what your frontend needs
     });
   }
 
