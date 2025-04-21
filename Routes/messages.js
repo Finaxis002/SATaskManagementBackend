@@ -3,50 +3,6 @@ const express = require("express");
 const router = express.Router();
 const Employee = require("../Models/Employee");
 
-// // POST route to send a message (No socket logic here)
-// router.post("/messages", async (req, res) => {
-//   try {
-//     const { sender, text, timestamp, recipient } = req.body;
-
-//     if (!sender || !text || !timestamp) {
-//       return res.status(400).json({ message: "Missing required fields" });
-//     }
-
-//     const newMessage = new ChatMessage({ sender, text, timestamp, recipient });
-//     const savedMessage = await newMessage.save();
-
-//     res.status(201).json(savedMessage);
-//   } catch (err) {
-//     console.error("❌ Error saving message:", err.message);
-//     res.status(500).json({ message: "Failed to save message" });
-//   }
-// });
-
-// // GET route to fetch all messages (No socket logic here)
-// router.get("/messages", async (req, res) => {
-//   try {
-//     const { name, role } = req.query;
-
-//     let messages = [];
-
-//     if (role === "admin") {
-//       messages = await ChatMessage.find().sort({ createdAt: 1 });
-//     } else {
-//       messages = await ChatMessage.find({
-//         $or: [
-//           { sender: name }, // user’s own messages
-//           { recipient: name }, // admin replies to them
-//         ],
-//       }).sort({ createdAt: 1 });
-//     }
-
-//     res.json(messages);
-//   } catch (err) {
-//     res.status(500).json({ message: "Failed to load messages" });
-//   }
-// });
-
-
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
   const { sender, text, timestamp } = req.body;
@@ -175,7 +131,6 @@ router.get("/group-unread-counts", async (req, res) => {
   }
 });
 
-
 // PUT /api/mark-read-group
 router.put("/mark-read-group", async (req, res) => {
   const { name, group } = req.body;
@@ -217,6 +172,56 @@ router.get("/group-members/:group", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+
+// POST API to send a message to a user
+router.post("/messages/user/:username", async (req, res) => {
+  const { username } = req.params;  // Get the recipient username from the URL
+  const { sender, text, timestamp } = req.body;  // Extract message details from the request body
+
+  console.log("Received message:", { sender, text, timestamp, username });
+
+  // Validate that required fields are present
+  if (!sender || !text || !timestamp) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  try {
+    // Create a new message object and save it to the database
+    const newMessage = new ChatMessage({
+      sender,
+      text,
+      timestamp,
+      recipient: username,  // Store the recipient username
+    });
+
+    const savedMessage = await newMessage.save();  // Save message to the database
+    console.log("Saved message:", savedMessage);
+
+    res.status(201).json(savedMessage);  // Respond with the saved message
+  } catch (err) {
+    console.error("❌ Error saving message:", err);
+    res.status(500).json({ message: "Failed to save message", error: err.message });
+  }
+});
+
+
+router.get("/messages/user/:username", async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    // Find messages where either sender or recipient is the username
+    const messages = await ChatMessage.find({
+      $or: [{ sender: username }, { recipient: username }],
+    }).sort({ timestamp: -1 }); // Sort messages by timestamp in descending order
+
+    res.json({ messages });
+  } catch (err) {
+    console.error("❌ Error fetching user-to-user messages:", err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
 
 
 // ✅ NEW ROUTE to fetch all group members
