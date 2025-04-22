@@ -41,11 +41,77 @@ router.post("/", async (req, res) => {
   }
 });
 
+// router.post("/admin", async (req, res) => {
+//   try {
+//     const { taskName, userName, date, message } = req.body;
 
+//     // Validate required fields
+//     if (!taskName || !userName || !date || !message) {
+//       return res.status(400).json({ error: "Missing required fields" });
+//     }
 
+//     // Create and save the notification in the database
+//     const notification = new Notification({
+//       taskName,
+//       userName,
+//       date,
+//       message,
+//       type: "admin", // This is for admin users only
+//     });
 
+//     await notification.save();
+
+//     // Emit the notification to all admins via socket.io
+//     io.emit("admin-notification", notification);
+
+//     res.status(201).json(notification);
+//   } catch (err) {
+//     console.error("Error creating notification:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
 // Fetch all notifications for a specific user
+router.post("/admin", async (req, res) => {
+  try {
+    const { taskName, userName, date, recipientEmail, message, taskId } = req.body;
+
+    // Validate required fields
+    if (!taskName || !userName || !date || !recipientEmail || !message || !taskId) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Create and save the notification in the database
+    const notification = new Notification({
+      taskName,
+      userName,
+      date,
+      recipientEmail,
+      message,
+      taskId, // Store taskId in the notification
+      type: "admin", // Only admins should see this
+    });
+
+    await notification.save();
+
+    // Emit to admin through socket.io
+    const io = req.app.get('io');  // Retrieve io from the app settings
+    const userSocketMap = req.app.get('userSocketMap'); // Retrieve userSocketMap
+
+    // Ensure the io object and userSocketMap are valid
+    if (!io || !userSocketMap) {
+      throw new Error("Socket or userSocketMap not initialized");
+    }
+
+    io.emit("admin-notification", notification);  // Emit to all admins
+    res.status(201).json(notification);
+  } catch (err) {
+    console.error("Error creating notification:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.get("/:email", async (req, res) => {
   try {
     const { email } = req.params;
@@ -57,6 +123,19 @@ router.get("/:email", async (req, res) => {
   } catch (err) {
     console.error("Error fetching notifications:", err);
     res.status(500).json({ message: "Failed to fetch notifications", error: err });
+  }
+});
+
+router.get("/admin", async (req, res) => {
+  try {
+    console.log("Querying admin notifications...");
+    // Fetch only admin notifications
+    const notifications = await Notification.find({ type: 'admin' }).sort({ createdAt: -1 }).limit(20);
+    console.log("Admin Notifications:", notifications);
+    res.status(200).json(notifications);
+  } catch (err) {
+    console.error("Error fetching admin notifications:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
