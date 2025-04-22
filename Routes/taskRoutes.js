@@ -8,61 +8,6 @@ const axios = require('axios');
 
 
 
-
-
-
-// Task Route
-// router.post("/", async (req, res) => {
-//   try {
-//     console.log("Received Task Body:", req.body);
-
-//     const task = new Task(req.body);
-//     const savedTask = await task.save();
-    
-//     console.log("Saved Task:", savedTask);  // Log the saved task to ensure data is correct
-
-//     // Access socket.io and userSocketMap from app
-//     const io = req.app.get("io");
-//     const userSocketMap = req.app.get("userSocketMap");
-
-//     const userEmail = savedTask?.assignee?.email;
-
-//     console.log("Assigned User Email:", userEmail);  // Check if we have the correct assignee email
-
-//     if (userEmail && userSocketMap[userEmail]) {
-//       console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
-//       io.to(userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
-//       console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
-//     } else {
-//       console.log("No socket found for the user or email not assigned");
-//     }
-
-//     res.status(201).json({ message: "Task created", task: savedTask });
-//   } catch (error) {
-//     console.error("Error saving task:", error);
-//     res.status(500).json({ message: "Failed to create task", error });
-//   }
-// });
-
-// // Task creation API with email notification
-// router.post("/send-email", async (req, res) => {
-//   const { to, subject, text } = req.body; // Get email parameters from request body
-
-//   if (!to || !subject || !text) {
-//     return res.status(400).json({ success: false, message: "Missing required fields" });
-//   }
-
-//   const result = await sendEmail(to, subject, text); // Send the email
-
-//   if (result.success) {
-//     return res.status(200).json({ success: true, message: "Email sent successfully" });
-//   } else {
-//     return res.status(500).json(result);
-//   }
-// });
-
-
-
 // Task creation API
 // Task Route
 router.post("/", async (req, res) => {
@@ -248,6 +193,20 @@ router.get("/", async (req, res) => {
 //     res.status(500).json({ message: error.message });
 //   }
 // });
+
+
+// Complete flag API to update task completion and send email
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, due, assignee, completed } = req.body;
+
+  try {
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      { name, due, assignee, completed },
+      { new: true }
+    );
+
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -269,9 +228,23 @@ router.patch('/:id', async (req, res) => {
     // Update task data
     const updatedTask = await Task.findByIdAndUpdate(id, updateData, { new: true });
 
+
     if (!updatedTask) {
       return res.status(404).json({ message: "Task not found" });
     }
+
+
+    const io = req.app.get("io");
+    io.emit("task-updated", updatedTask);
+
+    res.json(updatedTask);
+  } catch (error) {
+    console.error("Failed to update task", error);
+    res.status(500).json({ message: "Server error while updating task" });
+  }
+});
+
+
 
     // If the task is completed, notify admin(s)
     if (completed) {
@@ -323,6 +296,7 @@ router.patch('/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 
