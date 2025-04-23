@@ -4,6 +4,7 @@ const router = express.Router();
 const Notification = require("../Models/Notification");
 const { io, userSocketMap } = require("../server");
 
+
 // ✅ Keep specific routes before dynamic ones
 
 // Count unread notifications
@@ -31,6 +32,21 @@ router.get("/unread-count/:email", async (req, res) => {
   } catch (err) {
     console.error("Error fetching unread count:", err);
     res.status(500).json({ unreadCount: 0 });
+  }
+});
+
+router.get("/unread-count/admin", async (req, res) => {
+  try {
+    // Fetch all unread notifications where read: false
+    const unreadNotifications = await Notification.countDocuments({
+      read: false, // Only unread notifications
+    });
+
+    // Send the count as the response
+    res.json({ unreadCount: unreadNotifications });
+  } catch (error) {
+    console.error("Error fetching unread notifications for admin:", error);
+    res.status(500).json({ message: "Failed to fetch unread notifications", error });
   }
 });
 
