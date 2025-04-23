@@ -17,11 +17,12 @@ router.get("/unread-count/:email", async (req, res) => {
       read: false,
     };
 
-    // Admin should only get 'admin' notifications
+    // If the user is an admin, we will only count 'task-updated' notifications
     if (role === "admin") {
-      query.type = "admin";
+      query.action = "task-updated"; // Admin sees only 'task-updated' notifications
     } else {
-      query.type = "user";
+      query.recipientEmail = email; // For users, we filter by their email
+      query.type = "user"; // User notifications
     }
 
     const count = await Notification.countDocuments(query);
