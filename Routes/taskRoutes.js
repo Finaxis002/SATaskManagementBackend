@@ -111,7 +111,7 @@ router.put("/:id", async (req, res) => {
         const text = `Hello ${name},\n\nThe task "${updatedTask.taskName}" has been updated. Please see the details below:\n\n${Object.values(changes).join('\n')}\n\nBest regards,\nTask Management System`;
     
         await sendEmail(email, subject, text);
-        console.log("Backend received updatedBy:", updatedBy);
+        // console.log("Backend received updatedBy:", updatedBy);
     
         const notification = new Notification({
           recipientEmail: email,

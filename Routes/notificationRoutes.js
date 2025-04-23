@@ -27,13 +27,18 @@ router.get("/unread-count/:email", async (req, res) => {
     }
 
     const count = await Notification.countDocuments(query);
+    
+    // Optionally, emit another event to indicate the count has been updated
+    req.app.get("io").emit("notificationCountUpdated");
 
+    // Return the unread count in the response
     res.json({ unreadCount: count });
   } catch (err) {
     console.error("Error fetching unread count:", err);
     res.status(500).json({ unreadCount: 0 });
   }
 });
+
 
 router.get("/unread-count/admin", async (req, res) => {
   try {
