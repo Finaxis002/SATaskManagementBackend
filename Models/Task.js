@@ -1,30 +1,53 @@
-
 const mongoose = require('mongoose');
 
 const TaskSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  due: { type: String, required: true },
-  completed: { type: Boolean, default: false },
-  assignee: {
-    name: { type: String },
-    email: { type: String }
+  taskName: {
+    type: String,
+    required: true,
   },
-  assignedTo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Employee",
-    required: false,
+  workDesc: {
+    type: String,
   },
-  assignedToName: { type: String },
-  column: { type: String }, // For example: 'Recently assigned', 'Do today', etc.
-  createdAt: { type: Date, default: Date.now },
-  completedAt: { type: Date },  // Add this field
-  completedBy: { 
-    name: { type: String },
-    email: { type: String }
-  }
-},{ timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
- });
+
+  assignees: [
+    {
+      name: { type: String, required: true },
+      email: { type: String, required: true },
+    }
+  ],
+  assignedDate: {
+    type: Date,
+    required: true,
+  },
+
+  dueDate: {
+    type: Date,
+    required: true,
+  },
+
+  priority: {
+    type: String,
+    enum: ["Low", "Medium", "High"],
+    default: "Medium",
+  },
+
+  status: {
+    type: String,
+    enum: ["To Do", "In Progress", "Completed", "Overdue"],
+    default: "To Do",
+  },
+
+  overdueNote: {
+    type: String,
+    required: function () {
+      return this.status === "Overdue";
+    },
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
 module.exports = mongoose.model('Task', TaskSchema);
