@@ -81,7 +81,7 @@ router.put("/:id", async (req, res) => {
     if (taskName && taskName !== existingTask.taskName)
       changes.taskName = `Changed task name to "${taskName}"`;
     if (workDesc && workDesc !== existingTask.taskName)
-      changes.workDesc = `Changed task name to "${workDesc}"`;
+      changes.workDesc = `Changed task Description to "${workDesc}"`;
     if (priority && priority !== existingTask.priority)
       changes.priority = `Changed priority to "${priority}"`;
     if (status && status !== existingTask.status)
