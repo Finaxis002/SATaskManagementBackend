@@ -55,21 +55,61 @@ router.get("/unread-count/admin", async (req, res) => {
 
 
 // Mark all as read
-router.patch("/mark-all-read/:email", async (req, res) => {
+router.patch("/:id/mark-as-read", async (req, res) => {
+  const { userId } = req.body;
+
   try {
-    const email = req.params.email;
+    const notification = await Notification.findById(req.params.id);
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
 
-    const result = await Notification.updateMany(
-      { recipientEmail: email, read: false },
-      { $set: { read: true } }
-    );
+    if (!notification.readBy) notification.readBy = [];
 
-    res.json({ success: true, modifiedCount: result.modifiedCount });
+    if (!notification.readBy.includes(userId)) {
+      notification.readBy.push(userId);
+      await notification.save();
+    }
+
+    const io = req.app.get("io");
+    io.emit("notificationCountUpdated");
+
+    res.json({ success: true, updatedNotification: notification });
   } catch (err) {
-    console.error("Error marking all as read:", err);
-    res.status(500).json({ success: false });
+    console.error("Error marking notification as read:", err);
+    res.status(500).json({ message: "Failed to mark as read" });
   }
 });
+
+
+
+// PATCH /api/notifications/:id/mark-as-read
+router.patch('/:id/mark-as-read', async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const notification = await Notification.findById(req.params.id);
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    // Only push if not already marked by the user
+    if (!notification.readBy.includes(userId)) {
+      notification.readBy.push(userId);
+      await notification.save();
+    }
+
+    // Real-time badge update (optional)
+    const io = req.app.get("io");
+    io.emit("notificationCountUpdated");
+
+    res.json({ success: true, updatedNotification: notification });
+  } catch (err) {
+    console.error("Error marking as read:", err);
+    res.status(500).json({ message: "Failed to mark as read" });
+  }
+});
+
 
 
 router.get("/:email", async (req, res) => {
