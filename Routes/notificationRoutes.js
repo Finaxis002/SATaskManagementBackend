@@ -10,30 +10,33 @@ const { io, userSocketMap } = require("../server");
 // Count unread notifications
 router.get("/unread-count/:email", async (req, res) => {
   const email = req.params.email;
-  const role = req.query.role || "user"; // add ?role=user or ?role=admin in frontend
+  const role = req.query.role || "user"; // passed from frontend
 
   try {
-    const query = {
-      recipientEmail: email,
-      read: false,
-    };
+    let query = { read: false };
 
-    // If the user is an admin, we will only count 'task-updated' notifications
     if (role === "admin") {
-      query.action = "task-updated"; // Admin sees only 'task-updated' notifications
+      // ✅ Admin sees all unread task-updated notifications (not tied to recipient)
+      query.action = "task-updated";
     } else {
-      query.recipientEmail = email; // For users, we filter by their email
-      query.type = "user"; // User notifications
+      // ✅ Normal users: see their own unread 'task-created' and 'task-updated'
+      query.recipientEmail = email;
+      query.action = { $in: ["task-created", "task-updated"] };
     }
 
     const count = await Notification.countDocuments(query);
 
+    // Optionally emit socket event (not needed here if only for fetch)
+    // req.app.get("io").emit("notificationCountUpdated");
+
     res.json({ unreadCount: count });
   } catch (err) {
-    console.error("Error fetching unread count:", err);
+    console.error("❌ Error fetching unread count:", err);
     res.status(500).json({ unreadCount: 0 });
   }
 });
+
+
 
 router.get("/unread-count/admin", async (req, res) => {
   try {
@@ -112,24 +115,23 @@ router.get("/admin", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   try {
-    const notificationId = req.params.id;
-
     const updated = await Notification.findByIdAndUpdate(
-      notificationId,
-      { $set: { read: true } },
+      req.params.id,
+      { read: true },
       { new: true }
     );
 
-    if (!updated) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
+    // ✅ EMIT SOCKET EVENT for real-time badge update
+    const io = req.app.get("io");
+    io.emit("notificationCountUpdated");
 
-    res.json({ success: true, updated });
+    res.json(updated);
   } catch (err) {
     console.error("Error marking notification as read:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ message: "Failed to update notification" });
   }
 });
+
 
 
 
