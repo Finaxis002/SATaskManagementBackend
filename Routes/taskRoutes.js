@@ -4,57 +4,48 @@ const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 const axios = require("axios");
 const Notification = require("../Models/Notification");
+const io = require("../socket/socket")
 
 router.post("/", async (req, res) => {
   try {
-    // Create the task
     const task = new Task(req.body);
     const savedTask = await task.save();
 
-    // Access socket.io and userSocketMap from app
     const io = req.app.get("io");
     const userSocketMap = req.app.get("userSocketMap");
 
-    // Notify each assignee and save the notification to DB
     if (Array.isArray(savedTask.assignees)) {
-      for (const assignee of savedTask.assignees) {
+      for (const assignee of savedTask.assignees) { // ✅ FIXED
+
         const email = assignee.email;
         const name = assignee.name;
 
-        if (email) {
-          const subject = `New Task Assigned: ${savedTask.taskName}`;
-          const text = `Hello ${name},\n\nYou have been assigned a new task: ${savedTask.taskName}.\nDue Date: ${savedTask.dueDate}\n\nBest regards,\nYour Task Management System`;
+        const notification = new Notification({
+          recipientEmail: email,
+          message: `You have been assigned a new task: ${savedTask.taskName}`, // ✅ different message for new task
+          taskId: savedTask._id,
+          action: "task-created", // ✅ Not "task-updated"
+          type: "user",
+          read: false,
+          createdAt: new Date(),
+        });
 
-          // Send email to the assignee
-          await sendEmail(email, subject, text);
-
-          // Create the notification with the action type 'task-created' and save it to the database
-          const notification = new Notification({
-            recipientEmail: email,
-            message: `You have been assigned a new task: ${savedTask.taskName}`,
-            taskId: savedTask._id,
-            type: "user",
-            action: "task-created", // Action type to track the event
-          });
-
-          await notification.save();
-
-          // Emit the notification via socket.io
-          if (userSocketMap[email]) {
-            io.to(userSocketMap[email]).emit("new-task", savedTask);
-          } else {
-            console.log(`No socket found for: ${email}`);
-          }
-        }
+        await notification.save();
       }
     }
 
+    io.emit("notificationCountUpdated");
+    io.emit("new-task-created", savedTask);
+    console.log("📡 Backend emitted notificationCountUpdated");
+
     res.status(201).json({ message: "Task created", task: savedTask });
+
   } catch (error) {
     console.error("Error saving task:", error);
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
+
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -64,6 +55,7 @@ router.get("/", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch tasks", error });
   }
+  // io.emit("task-updated");
 });
 
 router.put("/:id", async (req, res) => {
@@ -131,6 +123,8 @@ router.put("/:id", async (req, res) => {
     // Emit the updated task via socket
     const io = req.app.get("io");
     io.emit("task-updated", updatedTask);
+    io.emit("notificationCountUpdated");
+console.log("📡 Backend emitted notificationCountUpdated");
 
     res.json(updatedTask);
   } catch (error) {
