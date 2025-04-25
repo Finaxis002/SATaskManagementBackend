@@ -143,22 +143,24 @@ router.put("/:id", async (req, res) => {
 
     // 🔔 1. Notify each user (assignee) — has email
     for (const assignee of updatedTask.assignees) {
-      if (updatedTask.assignedBy && assignee.email === updatedTask.assignedBy.email) continue;
-
-
-
+      // ✅ Skip sending notification to the person who made the update
+      if (updatedBy?.email === assignee.email) {
+        console.log(`⏭️ Skipping notification for updater: ${assignee.email}`);
+        continue;
+      }
+    
       const email = assignee.email;
       const name = assignee.name;
-
+    
       const subject = `Task Updated: ${updatedTask.taskName}`;
       const text = `Hello ${name},\n\nThe task "${
         updatedTask.taskName
       }" has been updated. Please see the details below:\n\n${Object.values(
         changes
       ).join("\n")}\n\nBest regards,\nTask Management System`;
-
+    
       await sendEmail(email, subject, text);
-
+    
       const notification = new Notification({
         recipientEmail: email,
         message: `Task "${updatedTask.taskName}" has been updated.`,
@@ -169,13 +171,14 @@ router.put("/:id", async (req, res) => {
         details: changes,
         read: false,
       });
-
+    
       await notification.save();
-
-      // Emit count update to user
+    
+      // ✅ Emit count update only to this user
       await emitUnreadNotificationCount(io, email);
       console.log(`📢 User notification sent and count emitted for: ${email}`);
     }
+    
 
     // 🔔 2. Notify all admins (no email, just role)
     const adminNotification = new Notification({
