@@ -3,15 +3,11 @@ const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema(
   {
-    recipientEmail: { type: String, required: true },
+    recipientEmail: { type: String, required: false},
     message: { type: String, required: true },
     taskId: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
-    readBy: {
-      type: [String], // Array of userIds or emails
-      default: [],
-    },
-    
+    read: { type: Boolean, default: false },
     type: { type: String, required: true },  // e.g., 'task', 'admin'
     action: { type: String, required: true }, // e.g., 'task-updated'
     updatedBy: { type: String },              // user email or name

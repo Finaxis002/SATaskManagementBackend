@@ -10,25 +10,19 @@ const { io, userSocketMap } = require("../server");
 // Count unread notifications
 router.get("/unread-count/:email", async (req, res) => {
   const email = req.params.email;
-  const role = req.query.role || "user"; // passed from frontend
+  const role = req.query.role || "user";
 
   try {
     let query = { read: false };
 
     if (role === "admin") {
-      // ✅ Admin sees all unread task-updated notifications (not tied to recipient)
-      query.action = "task-updated";
+      query.type = "admin"; // ✅ Admin notifications
     } else {
-      // ✅ Normal users: see their own unread 'task-created' and 'task-updated'
       query.recipientEmail = email;
-      query.action = { $in: ["task-created", "task-updated"] };
+      query.type = "user";
     }
 
     const count = await Notification.countDocuments(query);
-
-    // Optionally emit socket event (not needed here if only for fetch)
-    // req.app.get("io").emit("notificationCountUpdated");
-
     res.json({ unreadCount: count });
   } catch (err) {
     console.error("❌ Error fetching unread count:", err);
@@ -55,61 +49,21 @@ router.get("/unread-count/admin", async (req, res) => {
 
 
 // Mark all as read
-router.patch("/:id/mark-as-read", async (req, res) => {
-  const { userId } = req.body;
-
+router.patch("/mark-all-read/:email", async (req, res) => {
   try {
-    const notification = await Notification.findById(req.params.id);
-    if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
+    const email = req.params.email;
 
-    if (!notification.readBy) notification.readBy = [];
+    const result = await Notification.updateMany(
+      { recipientEmail: email, read: false },
+      { $set: { read: true } }
+    );
 
-    if (!notification.readBy.includes(userId)) {
-      notification.readBy.push(userId);
-      await notification.save();
-    }
-
-    const io = req.app.get("io");
-    io.emit("notificationCountUpdated");
-
-    res.json({ success: true, updatedNotification: notification });
+    res.json({ success: true, modifiedCount: result.modifiedCount });
   } catch (err) {
-    console.error("Error marking notification as read:", err);
-    res.status(500).json({ message: "Failed to mark as read" });
+    console.error("Error marking all as read:", err);
+    res.status(500).json({ success: false });
   }
 });
-
-
-
-// PATCH /api/notifications/:id/mark-as-read
-router.patch('/:id/mark-as-read', async (req, res) => {
-  const { userId } = req.body;
-
-  try {
-    const notification = await Notification.findById(req.params.id);
-    if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
-
-    // Only push if not already marked by the user
-    if (!notification.readBy.includes(userId)) {
-      notification.readBy.push(userId);
-      await notification.save();
-    }
-
-    // Real-time badge update (optional)
-    const io = req.app.get("io");
-    io.emit("notificationCountUpdated");
-
-    res.json({ success: true, updatedNotification: notification });
-  } catch (err) {
-    console.error("Error marking as read:", err);
-    res.status(500).json({ message: "Failed to mark as read" });
-  }
-});
-
 
 
 router.get("/:email", async (req, res) => {
@@ -161,9 +115,29 @@ router.patch("/:id", async (req, res) => {
       { new: true }
     );
 
-    // ✅ EMIT SOCKET EVENT for real-time badge update
     const io = req.app.get("io");
-    io.emit("notificationCountUpdated");
+
+    // Determine user email or role
+    const email = updated.recipientEmail || "admin"; // Fallback to admin if undefined
+
+    // ✅ Get updated unread count
+    const unreadCount = await Notification.countDocuments({
+      $and: [
+        { read: false },
+        {
+          $or: [
+            { recipientEmail: email },
+            { type: "admin", recipientEmail: { $exists: false } }
+          ]
+        }
+      ]
+    });
+    
+
+    // ✅ Emit proper socket event with email and count
+    io.emit("notificationCountUpdated", { email, count: unreadCount });
+
+    console.log(`📢 Real-time notification update sent to ${email} with count ${unreadCount}`);
 
     res.json(updated);
   } catch (err) {

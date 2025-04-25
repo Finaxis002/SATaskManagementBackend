@@ -5,8 +5,34 @@ const TaskSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+
   workDesc: {
     type: String,
+  },
+
+  taskCategory: {
+    type: String,
+    required: false, // Dropdown from frontend, add new if needed
+  },
+
+  department: {
+    type: String,
+    required: false, // Same as above
+  },
+
+  clientName: {
+    type: String,
+    required: false,
+  },
+
+  code: {
+    type: String,
+    required: false, // Project/task code - dropdown + add
+  },
+
+  assignedBy: {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
   },
 
   assignees: [
@@ -15,6 +41,7 @@ const TaskSchema = new mongoose.Schema({
       email: { type: String, required: true },
     }
   ],
+
   assignedDate: {
     type: Date,
     required: true,
