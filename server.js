@@ -43,8 +43,19 @@ app.use("/api", messageRoute);
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
+
+// const socketManager = require('./socket/socket');
+// const io = socketManager.initSocket(server);
+
 app.set("io", io);
 app.set("userSocketMap", userSocketMap);
+// app.set("socketManager", socketManager);
+
+// Initialize task reminders with io
+
+const taskReminderService = require('./services/taskReminderService');
+// taskReminderService.init(io); 
+taskReminderService.init(io, userSocketMap); 
 
 // Routes
 app.get("/", (req, res) => {
