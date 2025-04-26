@@ -4,10 +4,7 @@ const { sendEmail } = require("../email/emailService");  // Import email service
 const Task = require("../Models/Task");
 const { io, userSocketMap } = require("../server");
 const axios = require('axios');
-
-
-
-
+const { sendTaskReminder } = require("../services/taskReminderService"); 
 
 
 
@@ -101,7 +98,7 @@ router.post("/", async (req, res) => {
     } else {
       console.log("No socket found for the user or email not assigned");
     }
-
+    await sendTaskReminder(savedTask); 
     res.status(201).json({ message: "Task created", task: savedTask });
   } catch (error) {
     console.error("Error saving task:", error);
@@ -300,11 +297,21 @@ router.patch('/:id', async (req, res) => {
       }
 
       // Trigger Admin Notification Route
+      // const notificationData = {
+      //   taskName: updatedTask.name,
+      //   userName: userName,
+      //   date: new Date().toISOString(),
+      //   type: 'admin',
+      // };
+      
       const notificationData = {
         taskName: updatedTask.name,
         userName: userName,
-        date: new Date().toISOString(),
-        type: 'admin',
+        date: new Date().toISOString(),  // Ensure the correct date format
+        recipientEmail: 'admin@example.com',  // Ensure this is set correctly, or dynamically fetch the admin's email
+        message: `${userName} completed the task: ${updatedTask.name}`,
+        taskId: updatedTask._id,  // Ensure this is set
+        type: 'admin',  // This is important to distinguish the notification type
       };
 
       // Call the admin notification route here to generate admin notification
@@ -325,9 +332,6 @@ router.patch('/:id', async (req, res) => {
 });
 
 
-
-
-  
 // Delete a task (optional)
 router.delete("/:id", async (req, res) => {
   try {
@@ -338,7 +342,6 @@ router.delete("/:id", async (req, res) => {
 
   }
 });
-
 
 
 module.exports = router;

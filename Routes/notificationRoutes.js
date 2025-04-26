@@ -139,6 +139,7 @@ router.get("/admin", async (req, res) => {
   }
 });
 
+
 // Mark notification as read
 router.patch("/:id", async (req, res) => {
   try {
