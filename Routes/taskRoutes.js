@@ -1,94 +1,52 @@
 const express = require("express");
 const router = express.Router();
-const { sendEmail } = require("../email/emailService");  // Import email service
+const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
+
 const { io, userSocketMap } = require("../server");
 const axios = require('axios');
 const { sendTaskReminder } = require("../services/taskReminderService"); 
 
 
 
-// Task Route
-// router.post("/", async (req, res) => {
-//   try {
-//     console.log("Received Task Body:", req.body);
-
-//     const task = new Task(req.body);
-//     const savedTask = await task.save();
-    
-//     console.log("Saved Task:", savedTask);  // Log the saved task to ensure data is correct
-
-//     // Access socket.io and userSocketMap from app
-//     const io = req.app.get("io");
-//     const userSocketMap = req.app.get("userSocketMap");
-
-//     const userEmail = savedTask?.assignee?.email;
-
-//     console.log("Assigned User Email:", userEmail);  // Check if we have the correct assignee email
-
-//     if (userEmail && userSocketMap[userEmail]) {
-//       console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
-//       io.to(userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
-//       console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
-//     } else {
-//       console.log("No socket found for the user or email not assigned");
-//     }
-
-//     res.status(201).json({ message: "Task created", task: savedTask });
-//   } catch (error) {
-//     console.error("Error saving task:", error);
-//     res.status(500).json({ message: "Failed to create task", error });
-//   }
-// });
-
-// // Task creation API with email notification
-// router.post("/send-email", async (req, res) => {
-//   const { to, subject, text } = req.body; // Get email parameters from request body
-
-//   if (!to || !subject || !text) {
-//     return res.status(400).json({ success: false, message: "Missing required fields" });
-//   }
-
-//   const result = await sendEmail(to, subject, text); // Send the email
-
-//   if (result.success) {
-//     return res.status(200).json({ success: true, message: "Email sent successfully" });
-//   } else {
-//     return res.status(500).json(result);
-//   }
-// });
 
 
+const Notification = require("../Models/Notification");
+const io = require("../socket/socket");
+const {
+  emitUnreadNotificationCount,
+} = require("../utils/emitNotificationCount");
 
-// Task creation API
-// Task Route
+
 router.post("/", async (req, res) => {
   try {
-    console.log("Received Task Body:", req.body);
-
     const task = new Task(req.body);
     const savedTask = await task.save();
 
-    console.log("Saved Task:", savedTask);  // Log the saved task to ensure data is correct
-
-    // Access socket.io and userSocketMap from app
     const io = req.app.get("io");
-    const userSocketMap = req.app.get("userSocketMap");
 
-    const userEmail = savedTask?.assignee?.email;
+    if (Array.isArray(savedTask.assignees)) {
+      for (const assignee of savedTask.assignees) {
+        const email = assignee.email;
 
-    console.log("Assigned User Email:", userEmail);  // Check if we have the correct assignee email
+        const notification = new Notification({
+          recipientEmail: email,
+          message: `You have been assigned a new task: ${savedTask.taskName}`,
+          taskId: savedTask._id,
+          action: "task-created",
+          type: "user",
+          read: false,
+          createdAt: new Date(),
+        });
 
-    // Send email to assignee
-    if (userEmail) {
-      const subject = `New Task Assigned: ${savedTask.name}`;
-      const text = `Hello ${savedTask.assignee.name},\n\nYou have been assigned a new task: ${savedTask.name}.\nDue Date: ${savedTask.due}\n\nBest regards,\nYour Task Management System`;
-      await sendEmail(userEmail, subject, text); // Send email to the assigned user
+        await notification.save();
 
-      console.log(`📨 Email sent to: ${userEmail}`);
-    } else {
-      console.log("No email found for the assignee");
+        // ✅ Emit for each user inside the loop
+        await emitUnreadNotificationCount(io, email);
+        console.log(`📡 Emitted notificationCountUpdated for ${email}`);
+      }
     }
+
 
     // Emit task to assigned user if socket exists
     if (userEmail && userSocketMap[userEmail]) {
@@ -98,14 +56,18 @@ router.post("/", async (req, res) => {
     } else {
       console.log("No socket found for the user or email not assigned");
     }
-    await sendTaskReminder(savedTask); 
+    
+
+    io.emit("new-task-created", savedTask);
+    console.log("📡 Backend emitted notificationCountUpdated");
+await sendTaskReminder(savedTask); 
+
     res.status(201).json({ message: "Task created", task: savedTask });
   } catch (error) {
     console.error("Error saving task:", error);
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
-
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -115,142 +77,170 @@ router.get("/", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch tasks", error });
   }
+  // io.emit("task-updated");
 });
 
-//complete flag API
-// router.patch('/:id', async (req, res) => {
+router.put("/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    taskName,
+    workDesc,
+    dueDate,
+    assignees,
+    priority,
+    status,
+    overdueNote,
+    updatedBy,
+    taskCategory,
+    department,
+    clientName,
+    code,
+  } = req.body;
 
+  try {
+    const existingTask = await Task.findById(id);
+    if (!existingTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
-// router.patch('/:id', async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { completed } = req.body;
-//     const userEmail = req.headers['x-user-email'];
-//     const userName = req.headers['x-user-name'];
+    // Detect changes
+    // Detect changes
+    const changes = {};
+    if (taskName && taskName !== existingTask.taskName)
+      changes.taskName = `Changed task name to "${taskName}"`;
 
-//     const updateData = {
-//       completed,
-//       ...(completed && {
-//         completedAt: new Date(),
-//         completedBy: {
-//           name: userName,
-//           email: userEmail
-//         }
-//       })
-//     };
+    if (workDesc && workDesc !== existingTask.workDesc)
+      changes.workDesc = `Changed task Description to "${workDesc}"`;
 
-//     const updatedTask = await Task.findByIdAndUpdate(
-//       id,
-//       updateData,
-//       { new: true }
-//     );
+    if (priority && priority !== existingTask.priority)
+      changes.priority = `Changed priority to "${priority}"`;
 
-//     // Notify admin using existing socket implementation
-//     if (completed) {
-//       const io = req.app.get('io');
-//       const userSocketMap = req.app.get('userSocketMap');
-      
-//       // Find all admin users (assuming admin emails contain 'admin')
-//       const adminEntries = Object.entries(userSocketMap).filter(([email]) => 
-//         email.includes('admin') || email.includes('administrator')
-//       );
+    if (status && status !== existingTask.status)
+      changes.status = `Changed status to "${status}"`;
 
-//       // Send notification to all admins
-//       adminEntries.forEach(([adminEmail, adminSocketId]) => {
-//         io.to(adminSocketId).emit('task-completed', {
-//           taskName: updatedTask.name,
-//           userName: userName,
-//           date: new Date().toISOString()  // Use ISO string for consistency
-//         });
-//         console.log(`📢 Admin (${adminEmail}) notified: ${updatedTask.name} completed`);
-//       });
-//     }
+    if (
+      dueDate &&
+      new Date(dueDate).toISOString() !== existingTask.dueDate.toISOString()
+    )
+      changes.dueDate = `Changed due date to "${new Date(
+        dueDate
+      ).toLocaleDateString()}"`;
 
-// // //   const { id } = req.params;
-// // //   const { name, due, assignee, completed } = req.body;
+    if (overdueNote && overdueNote !== existingTask.overdueNote)
+      changes.overdueNote = `Changed overdue note`;
 
-// // //   try {
-// // //       // Update the task with all necessary fields
-// // //       const updatedTask = await Task.findByIdAndUpdate(
-// // //           id,
-// // //           { name, due, assignee, completed },
-// // //           { new: true } // return the updated document
-// // //       );
+    if (taskCategory && taskCategory !== existingTask.taskCategory)
+      changes.taskCategory = `Changed task category to "${taskCategory}"`;
 
-// // //       if (!updatedTask) {
-// // //           return res.status(404).json({ message: "Task not found" });
-// // //       }
+    if (department && department !== existingTask.department)
+      changes.department = `Changed department to "${department}"`;
 
-// // //       // Emit the updated task to all connected clients
-// // //       const io = req.app.get("io");
-// // //       io.emit("task-updated", updatedTask); // Emit task update event
+    if (clientName && clientName !== existingTask.clientName)
+      changes.clientName = `Changed client name to "${clientName}"`;
 
-// // //       res.json(updatedTask);
-// // //   } catch (error) {
-// // //       console.error("Failed to update task", error);
-// // //       res.status(500).json({ message: "Server error while updating task" });
-// // //   }
-// // // });
+    if (code && code !== existingTask.code)
+      changes.code = `Changed task code to "${code}"`;
 
-// // // Complete flag API to update task completion and send email
-// // router.patch('/:id', async (req, res) => {
-// //   const { id } = req.params;
-// //   const { name, due, assignee, completed } = req.body;
+    // Update the task
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      {
+        taskName,
+        workDesc,
+        dueDate,
+        assignees,
+        priority,
+        status,
+        overdueNote,
+        taskCategory,
+        department,
+        clientName,
+        code,
+      },
+      { new: true }
+    );
 
-// //   try {
-// //       // Update the task with all necessary fields
-// //       const updatedTask = await Task.findByIdAndUpdate(
-// //           id,
-// //           { name, due, assignee, completed },
-// //           { new: true } // return the updated document
-// //       );
+    const io = req.app.get("io");
 
-// //       if (!updatedTask) {
-// //           return res.status(404).json({ message: "Task not found" });
-// //       }
+    // 🔔 1. Notify each user (assignee) — has email
+    for (const assignee of updatedTask.assignees) {
+      // ✅ Skip sending notification to the person who made the update
+      if (updatedBy?.email === assignee.email) {
+        console.log(`⏭️ Skipping notification for updater: ${assignee.email}`);
+        continue;
+      }
+    
+      const email = assignee.email;
+      const name = assignee.name;
+    
+      // const subject = `Task Updated: ${updatedTask.taskName}`;
+      // const text = `Hello ${name},\n\nThe task "${
+      //   updatedTask.taskName
+      // }" has been updated. Please see the details below:\n\n${Object.values(
+      //   changes
+      // ).join("\n")}\n\nBest regards,\nTask Management System`;
+    
+      // await sendEmail(email, subject, text);
+    
+      const notification = new Notification({
+        recipientEmail: email,
+        message: `Task "${updatedTask.taskName}" has been updated.`,
+        taskId: updatedTask._id,
+        type: "user",
+        action: "task-updated",
+        updatedBy: JSON.stringify(updatedBy || { name: "System" }),
+        details: changes,
+        read: false,
+      });
+    
+      await notification.save();
+    
+      // ✅ Emit count update only to this user
+      await emitUnreadNotificationCount(io, email);
+      console.log(`📢 User notification sent and count emitted for: ${email}`);
+    }
+    
 
-// //       // Emit the updated task to all connected clients
-// //       const io = req.app.get("io");
-// //       io.emit("task-updated", updatedTask); // Emit task update event
+    // 🔔 2. Notify all admins (no email, just role)
+    const adminNotification = new Notification({
+      message: `Task "${updatedTask.taskName}" has been updated.`,
+      taskId: updatedTask._id,
+      type: "admin", // role-based
+      action: "task-updated",
+      updatedBy: JSON.stringify(updatedBy || { name: "System" }),
+      details: changes,
+      read: false,
+    });
 
-// //       // Send email to the assignee regarding the task update
-// //       if (updatedTask.assignee && updatedTask.assignee.email) {
-// //           const subject = `Task Updated: ${updatedTask.name}`;
-// //           const text = `
-// //               Hello ${updatedTask.assignee.name},\n\n
-// //               Your task has been updated:\n
-// //               Task: ${updatedTask.name}\n
-// //               Due Date: ${updatedTask.due}\n
-// //               Status: ${completed ? "Completed" : "Not Completed"}\n\n
-// //               Best regards,\n
-// //               Task Management System
-// //           `;
-// //           await sendEmail(updatedTask.assignee.email, subject, text);  // Send email to the assignee
-// //           console.log(`📨 Email sent to: ${updatedTask.assignee.email}`);
-// //       } else {
-// //           console.log("No email found for the assignee");
-// //       }
+    await adminNotification.save();
 
-// //       res.json(updatedTask);
-// //   } catch (error) {
-// //       console.error("Failed to update task", error);
-// //       res.status(500).json({ message: "Server error while updating task" });
-// //   }
-// // });
+    // Emit count update for admins (frontend will re-fetch)
+    io.emit("notificationCountUpdated", {
+      email: "admin", // ✅ unified key
+      count: null, // frontend will re-fetch anyway
+    });
 
+    console.log("📢 Admin notification created & broadcasted");
 
-//     res.json(updatedTask);
-//   } catch (error) {
-//     console.error('Task update error:', error);
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-router.patch('/:id', async (req, res) => {
+    // Emit updated task to everyone
+    io.emit("task-updated", updatedTask);
+
+    res.json(updatedTask);
+  } catch (error) {
+    console.error("❌ Failed to update task", error);
+    res
+      .status(500)
+      .json({ message: "Server error while updating task", error });
+  }
+});
+
+// Mark task as completed
+router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { completed } = req.body;
-    const userEmail = req.headers['x-user-email']; // Employee email
-    const userName = req.headers['x-user-name'];  // Employee name
+    const userEmail = req.headers["x-user-email"]; // Employee email
+    const userName = req.headers["x-user-name"]; // Employee name
 
     const updateData = {
       completed,
@@ -258,43 +248,46 @@ router.patch('/:id', async (req, res) => {
         completedAt: new Date(),
         completedBy: {
           name: userName,
-          email: userEmail
-        }
-      })
+          email: userEmail,
+        },
+      }),
     };
 
     // Update task data
-    const updatedTask = await Task.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedTask = await Task.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
 
     if (!updatedTask) {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // If the task is completed, notify admin(s)
+    // If the task is completed, notify the admin(s)
     if (completed) {
-      const io = req.app.get('io');
-      const userSocketMap = req.app.get('userSocketMap');
+      const io = req.app.get("io");
+      const userSocketMap = req.app.get("userSocketMap");
 
-      // Fetch the role from localStorage (assuming you send the role from frontend)
-      const role = req.headers['x-user-role'];  // Passed from frontend as 'admin' or 'employee'
+      // Fetch the role from headers (assuming you send the role from frontend)
+      const role = req.headers["x-user-role"]; // Passed from frontend as 'admin' or 'employee'
 
-      if (role === 'admin') {
+      if (role === "admin") {
         // If the user is an admin, fetch all admin sockets
-        const adminEntries = Object.entries(userSocketMap).filter(([email, socketId]) => {
-          // Assuming admin users are marked as 'admin' in their role (you can adjust this check accordingly)
-          return true; // Check for any users with admin role
-        });
+        const adminEntries = Object.entries(userSocketMap).filter(
+          ([email, socketId]) => {
+            // Check for any users with admin role (you can adjust this check accordingly)
+            return true; // Assume all admins are included in this logic
+          }
+        );
 
         // Send notification to all admins
         adminEntries.forEach(([adminEmail, adminSocketId]) => {
-          io.to(adminSocketId).emit('task-completed', {
+          io.to(adminSocketId).emit("task-completed", {
             taskName: updatedTask.name,
             userName: userName,
-            date: new Date().toISOString()  // Use ISO string for consistency
+            date: new Date().toISOString(), // Use ISO string for consistency
           });
-          console.log(`📢 Admin (${adminEmail}) notified: ${updatedTask.name} completed`);
         });
-      }
+
 
       // Trigger Admin Notification Route
       // const notificationData = {
@@ -322,6 +315,7 @@ router.patch('/:id', async (req, res) => {
         .catch(error => {
           console.error('Error sending admin notification:', error);
         });
+
     }
 
     res.json(updatedTask);
@@ -331,7 +325,6 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-
 // Delete a task (optional)
 router.delete("/:id", async (req, res) => {
   try {
@@ -339,9 +332,10 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Task deleted" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete task", error });
-
   }
 });
 
 
+
 module.exports = router;
+

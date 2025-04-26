@@ -5,109 +5,63 @@ const Notification = require("../Models/Notification");
 const { io, userSocketMap } = require("../server");
 
 
-router.post("/", async (req, res) => {
+// ✅ Keep specific routes before dynamic ones
+
+// Count unread notifications
+router.get("/unread-count/:email", async (req, res) => {
+  const email = req.params.email;
+  const role = req.query.role || "user";
+
   try {
-    const { recipientEmail, message, taskId } = req.body;
+    let query = { read: false };
 
-    // Validate required fields
-    if (!recipientEmail || !message || !taskId) {
-      console.error("Missing required fields:", { recipientEmail, message, taskId });
-      return res.status(400).json({ message: "All fields (recipientEmail, message, taskId) are required" });
-    }
-
-    console.log("Received data for new notification:", req.body);
-
-    // Save the notification to the database
-    const newNotification = new Notification({
-      recipientEmail,
-      message,
-      taskId,
-    });
-
-    await newNotification.save();
-
-    // Emit to the user via socket.io
-    if (userSocketMap[recipientEmail]) {
-      io.to(userSocketMap[recipientEmail]).emit("new-task", newNotification);
-      console.log("Notification sent to socket:", recipientEmail);
+    if (role === "admin") {
+      query.type = "admin"; // ✅ Admin notifications
     } else {
-      console.log("Socket for user not found:", recipientEmail);
+      query.recipientEmail = email;
+      query.type = "user";
     }
 
-    res.status(201).json({ message: "Notification sent", notification: newNotification });
+    const count = await Notification.countDocuments(query);
+    res.json({ unreadCount: count });
   } catch (err) {
-    console.error("Error saving notification:", err);
-    res.status(500).json({ message: "Failed to create notification", error: err });
+    console.error("❌ Error fetching unread count:", err);
+    res.status(500).json({ unreadCount: 0 });
   }
 });
 
-// router.post("/admin", async (req, res) => {
-//   try {
-//     const { taskName, userName, date, message } = req.body;
 
-//     // Validate required fields
-//     if (!taskName || !userName || !date || !message) {
-//       return res.status(400).json({ error: "Missing required fields" });
-//     }
 
-//     // Create and save the notification in the database
-//     const notification = new Notification({
-//       taskName,
-//       userName,
-//       date,
-//       message,
-//       type: "admin", // This is for admin users only
-//     });
-
-//     await notification.save();
-
-//     // Emit the notification to all admins via socket.io
-//     io.emit("admin-notification", notification);
-
-//     res.status(201).json(notification);
-//   } catch (err) {
-//     console.error("Error creating notification:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
-
-// Fetch all notifications for a specific user
-router.post("/admin", async (req, res) => {
+router.get("/unread-count/admin", async (req, res) => {
   try {
-    const { taskName, userName, date, recipientEmail, message, taskId } = req.body;
-
-    // Validate required fields
-    if (!taskName || !userName || !date || !recipientEmail || !message || !taskId) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Create and save the notification in the database
-    const notification = new Notification({
-      taskName,
-      userName,
-      date,
-      recipientEmail,
-      message,
-      taskId, // Store taskId in the notification
-      type: "admin", // Only admins should see this
+    // Fetch all unread notifications where read: false
+    const unreadNotifications = await Notification.countDocuments({
+      read: false, // Only unread notifications
     });
 
-    await notification.save();
+    // Send the count as the response
+    res.json({ unreadCount: unreadNotifications });
+  } catch (error) {
+    console.error("Error fetching unread notifications for admin:", error);
+    res.status(500).json({ message: "Failed to fetch unread notifications", error });
+  }
+});
 
-    // Emit to admin through socket.io
-    const io = req.app.get('io');  // Retrieve io from the app settings
-    const userSocketMap = req.app.get('userSocketMap'); // Retrieve userSocketMap
 
-    // Ensure the io object and userSocketMap are valid
-    if (!io || !userSocketMap) {
-      throw new Error("Socket or userSocketMap not initialized");
-    }
+// Mark all as read
+router.patch("/mark-all-read/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
 
-    io.emit("admin-notification", notification);  // Emit to all admins
-    res.status(201).json(notification);
+    const result = await Notification.updateMany(
+      { recipientEmail: email, read: false },
+      { $set: { read: true } }
+    );
+
+    res.json({ success: true, modifiedCount: result.modifiedCount });
   } catch (err) {
-    console.error("Error creating notification:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Error marking all as read:", err);
+    res.status(500).json({ success: false });
   }
 });
 
@@ -126,6 +80,19 @@ router.get("/:email", async (req, res) => {
   }
 });
 
+
+// For Admin - Get ALL notifications (without filtering by email)
+router.get("/", async (req, res) => {
+  try {
+    const allNotifications = await Notification.find();
+    res.status(200).json(allNotifications);
+  } catch (err) {
+    console.error("Error fetching all notifications:", err);
+    res.status(500).json({ message: "Server error while fetching notifications" });
+  }
+});
+
+// Routes/notificationsRoutes.js
 router.get("/admin", async (req, res) => {
   try {
     console.log("Querying admin notifications...");
@@ -140,39 +107,49 @@ router.get("/admin", async (req, res) => {
 });
 
 
-// Mark notification as read
+
 router.patch("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const updatedNotification = await Notification.findByIdAndUpdate(
-      id,
+    const updated = await Notification.findByIdAndUpdate(
+      req.params.id,
       { read: true },
-      { new: true } // Return the updated document
+      { new: true }
     );
 
-    if (!updatedNotification) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
+    const io = req.app.get("io");
 
-    res.status(200).json(updatedNotification);
+    // Determine user email or role
+    const email = updated.recipientEmail || "admin"; // Fallback to admin if undefined
+
+    // ✅ Get updated unread count
+    const unreadCount = await Notification.countDocuments({
+      $and: [
+        { read: false },
+        {
+          $or: [
+            { recipientEmail: email },
+            { type: "admin", recipientEmail: { $exists: false } }
+          ]
+        }
+      ]
+    });
+    
+
+    // ✅ Emit proper socket event with email and count
+    io.emit("notificationCountUpdated", { email, count: unreadCount });
+
+    console.log(`📢 Real-time notification update sent to ${email} with count ${unreadCount}`);
+
+    res.json(updated);
   } catch (err) {
-    console.error("Error updating notification:", err);
-    res.status(500).json({ message: "Failed to mark notification as read", error: err });
+    console.error("Error marking notification as read:", err);
+    res.status(500).json({ message: "Failed to update notification" });
   }
 });
 
-// Clear all notifications for a user (optional)
-router.delete("/:email", async (req, res) => {
-  try {
-    const { email } = req.params;
-    await Notification.deleteMany({ recipientEmail: email });
-    res.status(200).json({ message: "All notifications cleared" });
-  } catch (err) {
-    console.error("Error clearing notifications:", err);
-    res.status(500).json({ message: "Failed to clear notifications", error: err });
-  }
-});
+
+
+
 
 
 module.exports = router;

@@ -10,7 +10,6 @@ const notificationRoutes = require("./Routes/notificationRoutes");
 const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
 
-
 dotenv.config(); // Load .env
 
 const app = express();
@@ -28,7 +27,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // for local development
-      "https://task-management-software-phi.vercel.app", // for production
+      "https://task-management-software-phi.vercel.app",
+      "https://sataskmanagement.onrender.com" // for production
     ],
     credentials: true, // Allow cookies to be sent with the request
   })
@@ -61,10 +61,6 @@ taskReminderService.init(io, userSocketMap);
 app.get("/", (req, res) => {
   res.send("Task Management Backend is running!");
 });
-
-// Endpoint to send an email
-
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
