@@ -22,8 +22,10 @@ router.post("/messages/:group", async (req, res) => {
     });
 
     const savedMessage = await newMessage.save();
-    console.log("Saved message:", savedMessage);
-
+    const io = req.app.get("io");
+    io.emit("receiveMessage", savedMessage);
+    io.emit("inboxCountUpdated");
+    
     res.status(201).json(savedMessage);  // Respond with saved message
   } catch (err) {
     console.error("❌ Error saving message:", err);
@@ -84,13 +86,13 @@ router.get("/unread-count", async (req, res) => {
   }
 
   try {
-    // Filter unread messages not sent by the current user
+    // Count unread messages NOT sent by current user
     const unreadMessages = await ChatMessage.find({
       read: false,
-      sender: { $ne: name }, // Don't count messages sent by the user themselves
+      sender: { $ne: name }, // Don't count messages sent by user themselves
     });
 
-    res.json({ unreadCount: unreadMessages.length });
+    res.json({ unreadCount: unreadMessages.length }); // ✅ Just total unread messages
   } catch (err) {
     console.error("❌ Error fetching unread count:", err.message);
     res.status(500).json({ message: "Failed to fetch unread count" });
@@ -101,12 +103,18 @@ router.get("/unread-count", async (req, res) => {
 router.put("/mark-read", async (req, res) => {
   try {
     await ChatMessage.updateMany({ read: false }, { $set: { read: true } });
+
+    // 🛠️ After updating, broadcast to all connected clients
+    const io = req.app.get("io"); // make sure your socket.io instance is attached
+    io.emit("inboxCountUpdated");  // ✅ Tell frontend to refresh badges
+
     res.status(200).json({ message: "All messages marked as read" });
   } catch (err) {
     console.error("❌ Error marking messages as read:", err.message);
     res.status(500).json({ message: "Failed to mark messages as read" });
   }
 });
+
 
 router.get("/group-unread-counts", async (req, res) => {
   const { name } = req.query;
@@ -121,8 +129,11 @@ router.get("/group-unread-counts", async (req, res) => {
 
     const counts = {};
     unreadMessages.forEach((msg) => {
-      counts[msg.group] = (counts[msg.group] || 0) + 1;
+      if (msg.group && typeof msg.group === "string" && msg.group.trim() !== "") {
+        counts[msg.group] = (counts[msg.group] || 0) + 1;
+      }
     });
+    
 
     res.json({ groupUnreadCounts: counts });
   } catch (error) {
@@ -195,8 +206,10 @@ router.post("/messages/user/:username", async (req, res) => {
       recipient: username,  // Store the recipient username
     });
 
-    const savedMessage = await newMessage.save();  // Save message to the database
-    console.log("Saved message:", savedMessage);
+    const savedMessage = await newMessage.save();
+    const io = req.app.get("io");
+    io.emit("receiveMessage", savedMessage);
+    io.emit("inboxCountUpdated");    
 
     res.status(201).json(savedMessage);  // Respond with the saved message
   } catch (err) {
