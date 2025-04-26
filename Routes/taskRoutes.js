@@ -123,7 +123,7 @@ router.put("/:id", async (req, res) => {
 
      // Detect and update the remark
      if (remark && remark !== existingTask.remark)
-      changes.remark = `Changed remark to "${remark}"`; // Log the change in remarks
+      changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
 
 
     // Update the task
