@@ -73,6 +73,7 @@ router.put("/:id", async (req, res) => {
     taskCategory,
     department,
     clientName,
+    remark,  
     code,
   } = req.body;
 
@@ -82,7 +83,7 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Detect changes
+  
     // Detect changes
     const changes = {};
     if (taskName && taskName !== existingTask.taskName)
@@ -120,6 +121,11 @@ router.put("/:id", async (req, res) => {
     if (code && code !== existingTask.code)
       changes.code = `Changed task code to "${code}"`;
 
+     // Detect and update the remark
+     if (remark && remark !== existingTask.remark)
+      changes.remark = `Changed remark to "${remark}"`; // Log the change in remarks
+
+
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
       id,
@@ -135,6 +141,7 @@ router.put("/:id", async (req, res) => {
         department,
         clientName,
         code,
+        remark, // Add the remark here
       },
       { new: true }
     );

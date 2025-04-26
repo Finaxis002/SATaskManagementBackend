@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const TaskSchema = new mongoose.Schema({
   taskName: {
@@ -39,7 +39,7 @@ const TaskSchema = new mongoose.Schema({
     {
       name: { type: String, required: true },
       email: { type: String, required: true },
-    }
+    },
   ],
 
   assignedDate: {
@@ -70,6 +70,12 @@ const TaskSchema = new mongoose.Schema({
       return this.status === "Overdue";
     },
   },
+  // Added Remark field
+  remark: {
+    type: String,
+    required: false, // You can set this to true if you want it to be a mandatory field
+    default: "", // Optional: Set an initial value if needed (empty string here)
+  },
 
   createdAt: {
     type: Date,
@@ -77,4 +83,4 @@ const TaskSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('Task', TaskSchema);
+module.exports = mongoose.model("Task", TaskSchema);
