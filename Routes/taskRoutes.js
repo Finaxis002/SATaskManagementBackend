@@ -3,7 +3,7 @@ const router = express.Router();
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 
-const { userSocketMap } = require("../server");
+// const { userSocketMap } = require("../server");
 const axios = require('axios');
 const { sendTaskReminder } = require("../services/taskReminderService"); 
 
@@ -49,9 +49,9 @@ router.post("/", async (req, res) => {
 
 
     // Emit task to assigned user if socket exists
-    if (userEmail && userSocketMap[userEmail]) {
+    if (userEmail && global.userSocketMap[userEmail]) {
       console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
-      io.to(userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
+      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
       console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
     } else {
       console.log("No socket found for the user or email not assigned");
