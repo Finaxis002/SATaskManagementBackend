@@ -2,12 +2,21 @@ const express = require("express");
 const router = express.Router();
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
-const axios = require("axios");
+
+const { io, userSocketMap } = require("../server");
+const axios = require('axios');
+const { sendTaskReminder } = require("../services/taskReminderService"); 
+
+
+
+
+
 const Notification = require("../Models/Notification");
 const io = require("../socket/socket");
 const {
   emitUnreadNotificationCount,
 } = require("../utils/emitNotificationCount");
+
 
 router.post("/", async (req, res) => {
   try {
@@ -38,8 +47,20 @@ router.post("/", async (req, res) => {
       }
     }
 
+
+    // Emit task to assigned user if socket exists
+    if (userEmail && userSocketMap[userEmail]) {
+      console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
+      io.to(userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
+      console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
+    } else {
+      console.log("No socket found for the user or email not assigned");
+    }
+    
+
     io.emit("new-task-created", savedTask);
     console.log("📡 Backend emitted notificationCountUpdated");
+await sendTaskReminder(savedTask); 
 
     res.status(201).json({ message: "Task created", task: savedTask });
   } catch (error) {
@@ -267,21 +288,34 @@ router.patch("/:id", async (req, res) => {
           });
         });
 
-        // Create notification for the admin(s) with the action type 'task-completed'
-        const notificationData = {
-          taskName: updatedTask.name,
-          userName: userName,
-          date: new Date().toISOString(),
-          type: "admin", // Only admins should see this
-          action: "task-completed", // Action type for task completion
-        };
 
-        // Send the admin notification
-        await axios.post(
-          "http://localhost:5000/api/notifications/admin",
-          notificationData
-        );
-      }
+      // Trigger Admin Notification Route
+      // const notificationData = {
+      //   taskName: updatedTask.name,
+      //   userName: userName,
+      //   date: new Date().toISOString(),
+      //   type: 'admin',
+      // };
+      
+      const notificationData = {
+        taskName: updatedTask.name,
+        userName: userName,
+        date: new Date().toISOString(),  // Ensure the correct date format
+        recipientEmail: 'admin@example.com',  // Ensure this is set correctly, or dynamically fetch the admin's email
+        message: `${userName} completed the task: ${updatedTask.name}`,
+        taskId: updatedTask._id,  // Ensure this is set
+        type: 'admin',  // This is important to distinguish the notification type
+      };
+
+      // Call the admin notification route here to generate admin notification
+      await axios.post('http://localhost:5000/api/notifications/admin', notificationData)
+        .then(response => {
+          console.log('Admin notification sent:', response.data);
+        })
+        .catch(error => {
+          console.error('Error sending admin notification:', error);
+        });
+
     }
 
     res.json(updatedTask);
@@ -301,4 +335,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+
+
 module.exports = router;
+

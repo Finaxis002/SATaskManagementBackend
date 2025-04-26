@@ -77,4 +77,8 @@ const TaskSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('Task', TaskSchema);
+// module.exports = mongoose.model('Task', TaskSchema);
+// Safe model definition to avoid overwriting
+const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema);
+
+module.exports = Task;
