@@ -9,6 +9,45 @@ const adminUserId = "admin"; // Change this as needed
 const adminPassword = "admin123"; // Change this as needed
 
 // POST /api/employees - Add new employee
+// router.post("/", async (req, res) => {
+//   const { name, email, position, department, userId, password, role } = req.body;
+
+//   // Validation checks (optional)
+//   if (!name || !email || !position || !userId || !password) {
+//     return res.status(400).json({ message: "All fields are required!" });
+//   }
+
+//   try {
+//     // Check if email already exists
+//     const existingEmployee = await Employee.findOne({ email });
+//     if (existingEmployee) {
+//       return res.status(400).json({ message: "Email already exists!" });
+//     }
+
+//     // Hash password
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     // Default role to 'user' if not provided
+//     const newEmployeeRole = role || 'user';
+
+//     const newEmployee = new Employee({
+//       name,
+//       email,
+//       position,
+//       department,
+//       userId,
+//       password: hashedPassword, // Store hashed password
+//       role: newEmployeeRole, // Set role (default is 'user')
+//     });
+
+//     await newEmployee.save();
+//     res.status(201).json({ message: "Employee added successfully", employee: newEmployee });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Error adding employee", error });
+//   }
+// });
+// POST /api/employees - Add new employee
 router.post("/", async (req, res) => {
   const { name, email, position, department, userId, password, role } = req.body;
 
@@ -28,7 +67,7 @@ router.post("/", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Default role to 'user' if not provided
-    const newEmployeeRole = role || 'user';
+    const newEmployeeRole = role || 'user'; // Default to 'user' role if not provided
 
     const newEmployee = new Employee({
       name,
@@ -37,7 +76,7 @@ router.post("/", async (req, res) => {
       department,
       userId,
       password: hashedPassword, // Store hashed password
-      role: newEmployeeRole, // Set role (default is 'user')
+      role: newEmployeeRole, // Set role (defaults to 'user' if not 'admin')
     });
 
     await newEmployee.save();
@@ -47,6 +86,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ message: "Error adding employee", error });
   }
 });
+
 
 // GET /api/employees - Get all employees
 router.get("/", async (req, res) => {
@@ -101,7 +141,6 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ message: "Error updating employee", error: err.message });
   }
 });
-
 
 
 // DELETE /api/employees/:id - Delete employee
