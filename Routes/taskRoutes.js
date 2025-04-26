@@ -3,7 +3,7 @@ const router = express.Router();
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 
-const { io, userSocketMap } = require("../server");
+const { userSocketMap } = require("../server");
 const axios = require('axios');
 const { sendTaskReminder } = require("../services/taskReminderService"); 
 
