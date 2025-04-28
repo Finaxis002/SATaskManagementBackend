@@ -343,6 +343,7 @@
 
 
 ///////////////////////////////////////////////////////////////
+const moment = require('moment-timezone');
 const cron = require('node-cron');
 const Task = require("../Models/Task");
 const { sendEmail } = require('../email/emailService');
@@ -474,22 +475,48 @@ async function sendTaskReminder(task) {
     return;
   }
 
-  const now = new Date();
+  // const now = new Date();
 
   // Convert now to IST timezone manually (add 5.5 hours)
-  const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
-  const currentHourIST = nowIST.getHours(); // Important
+  // const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  // const currentHourIST = nowIST.getHours(); // Important
+  // const currentMinuteIST = nowIST.getMinutes();
+  // const currentMinute = nowIST.getMinutes();
+  // console.log("Current IST Time:", `${currentHourIST}:${currentMinuteIST}`);
 
-  const todayUTC = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  ));
+  const now = moment();  // Get current time in local timezone
+  const nowIST = now.tz("Asia/Kolkata");  // Convert to IST using moment-timezone
+  const currentHourIST = nowIST.hour();  // Get current hour in IST
+  const currentMinuteIST = nowIST.minute();  // Get current minute in IST
+  console.log("Current IST Time:", `${currentHourIST}:${currentMinuteIST}`);
 
-  const dueDateUTC = new Date(task.dueDate);
-  dueDateUTC.setUTCHours(0, 0, 0, 0);
+  // const todayUTC = new Date(Date.UTC(
+  //   now.getUTCFullYear(),
+  //   now.getUTCMonth(),
+  //   now.getUTCDate()
+  // ));
 
-  const diffDays = Math.floor((dueDateUTC - todayUTC) / (1000 * 3600 * 24));
+  // const dueDateUTC = new Date(task.dueDate);
+  // dueDateUTC.setUTCHours(0, 0, 0, 0);
+
+  // const diffDays = Math.floor((dueDateUTC - todayUTC) / (1000 * 3600 * 24));
+
+  // console.log('\n--- Reminder Check ---');
+  // console.log('Task:', task.taskName || task.name);
+  // console.log('Due:', dueDateUTC.toISOString());
+  // console.log('Today:', todayUTC.toISOString());
+  // console.log('Days until due:', diffDays);
+  // console.log('Current IST hour:', currentHourIST);
+
+  // Only send reminder at 11 AM or 5 PM (Indian Standard Time)
+  // if (currentHourIST !== 11 && currentHourIST !== 17) {
+  //   console.log("⏸️ Not reminder time (not 11 AM or 5 PM). Skipping...");
+  //   return;
+  // }
+  const todayUTC = moment.utc().startOf('day');  // Get UTC date for today, at midnight
+  const dueDateUTC = moment.utc(task.dueDate).startOf('day');  // Convert task due date to UTC and set to midnight
+
+  const diffDays = dueDateUTC.diff(todayUTC, 'days');  // Calculate difference in days
 
   console.log('\n--- Reminder Check ---');
   console.log('Task:', task.taskName || task.name);
@@ -497,24 +524,31 @@ async function sendTaskReminder(task) {
   console.log('Today:', todayUTC.toISOString());
   console.log('Days until due:', diffDays);
   console.log('Current IST hour:', currentHourIST);
-
-  // Only send reminder at 11 AM or 5 PM (Indian Standard Time)
-  // if (currentHourIST !== 11 && currentHourIST !== 17) {
-  //   console.log("⏸️ Not reminder time (not 11 AM or 5 PM). Skipping...");
-  //   return;
-  // }
-  console.log("currentHourIST", currentHourIST)
+  
+  
   // Check if current time is within the scheduled time windows
-  const isMorningReminder = (currentHourIST === 10 && currentMinute >= 55) || (currentHourIST === 11 && currentMinute <= 5);
-  const isEveningReminder = (currentHourIST === 16 && currentMinute >= 55) || (currentHourIST === 17 && currentMinute <= 5);
-  const isSixPMReminder = (currentHourIST === 17 && currentMinute >= 55) || (currentHourIST === 18 && currentMinute <= 5);
-  const isSixThirtyPMReminder = (currentHourIST === 18 && currentMinute >= 25) && (currentMinute <= 35);
-console.log("isSixThirtyPMReminder", isSixThirtyPMReminder)
-  // Only proceed if it's the scheduled time
-  if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
-    console.log("⏸️ Not reminder time. Skipping...");
-    return;
-  }
+  // Check if current time is within the scheduled time windows
+// const isMorningReminder = (currentHourIST === 10 && currentMinute >= 55) || (currentHourIST === 11 && currentMinute <= 5);
+// const isEveningReminder = (currentHourIST === 16 && currentMinute >= 55) || (currentHourIST === 17 && currentMinute <= 5);
+// const isSixPMReminder = (currentHourIST === 17 && currentMinute >= 55) || (currentHourIST === 18 && currentMinute <= 5);
+
+// const isSixThirtyPMReminder = (currentHourIST === 18 && currentMinute >= 25) && (currentMinute <= 35);
+
+//   // Only proceed if it's the scheduled time
+//   if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
+//     console.log("⏸️ Not reminder time. Skipping...");
+//     return;
+//   }
+const isMorningReminder = (currentHourIST === 13 && currentMinuteIST >= 55) || (currentHourIST === 14 && currentMinuteIST <= 5);
+const isEveningReminder = (currentHourIST === 16 && currentMinuteIST >= 55) || (currentHourIST === 17 && currentMinuteIST <= 5);
+const isSixPMReminder = (currentHourIST === 17 && currentMinuteIST >= 55) || (currentHourIST === 18 && currentMinuteIST <= 5);
+const isSixThirtyPMReminder = (currentHourIST === 18 && currentMinuteIST >= 25) && (currentMinuteIST <= 35);
+
+// Only proceed if it's the scheduled time
+// if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
+//   console.log("⏸️ Not reminder time. Skipping...");
+//   return;
+// }
   // Now for each assignee
   task.assignees.forEach(assignee => {
     const assigneeEmail = assignee.email;
@@ -592,3 +626,21 @@ module.exports = {
   init,
   sendTaskReminder
 };
+
+ // Only send reminder at 11 AM or 5 PM (Indian Standard Time)
+  // if (currentHourIST !== 11 && currentHourIST !== 17) {
+  //   console.log("⏸️ Not reminder time (not 11 AM or 5 PM). Skipping...");
+  //   return;
+  // }
+//   console.log("currentHourIST", currentHourIST)
+//   // Check if current time is within the scheduled time windows
+//   const isMorningReminder = (currentHourIST === 10 && currentMinute >= 55) || (currentHourIST === 11 && currentMinute <= 5);
+//   const isEveningReminder = (currentHourIST === 16 && currentMinute >= 55) || (currentHourIST === 17 && currentMinute <= 5);
+//   const isSixPMReminder = (currentHourIST === 17 && currentMinute >= 55) || (currentHourIST === 18 && currentMinute <= 5);
+//   const isSixThirtyPMReminder = (currentHourIST === 18 && currentMinute >= 25) && (currentMinute <= 35);
+// console.log("isSixThirtyPMReminder", isSixThirtyPMReminder)
+//   // Only proceed if it's the scheduled time
+//   if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
+//     console.log("⏸️ Not reminder time. Skipping...");
+//     return;
+//   }

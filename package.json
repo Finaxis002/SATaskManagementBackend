@@ -29,6 +29,7 @@
     "express": "^5.1.0",
     "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.5.48",
     "mongoose": "^8.13.2",
     "node-cron": "^3.0.3",
     "node-npm": "^1.0.0",
