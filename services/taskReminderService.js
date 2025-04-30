@@ -539,10 +539,10 @@ async function sendTaskReminder(task) {
 //     console.log("⏸️ Not reminder time. Skipping...");
 //     return;
 //   }
-const isMorningReminder = (currentHourIST === 10 && currentMinuteIST >= 55) || (currentHourIST === 11 && currentMinuteIST <= 5);
-const isEveningReminder = (currentHourIST === 16 && currentMinuteIST >= 55) || (currentHourIST === 17 && currentMinuteIST <= 5);
-const isSixPMReminder = (currentHourIST === 17 && currentMinuteIST >= 55) || (currentHourIST === 18 && currentMinuteIST <= 5);
-const isSixThirtyPMReminder = (currentHourIST === 15 && currentMinuteIST >= 25) && (currentMinuteIST <= 35);
+const isMorningReminder = (currentHourIST === 10 && currentMinuteIST >= 58) || (currentHourIST === 11 && currentMinuteIST <= 2);
+const isEveningReminder = (currentHourIST === 16 && currentMinuteIST >= 58) || (currentHourIST === 17 && currentMinuteIST <= 2);
+const isSixPMReminder = (currentHourIST === 17 && currentMinuteIST >= 58) || (currentHourIST === 18 && currentMinuteIST <= 2);
+const isSixThirtyPMReminder = (currentHourIST === 15 && currentMinuteIST >= 29) && (currentMinuteIST <= 32);
 
 // Only proceed if it's the scheduled time
 if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
@@ -603,7 +603,6 @@ if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPM
     }
   });
 }
-
 
 
 function startCronJob() {
