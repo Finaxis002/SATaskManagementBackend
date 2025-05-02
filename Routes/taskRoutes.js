@@ -94,6 +94,7 @@ router.put("/:id", async (req, res) => {
     taskCategory,
     department,
     clientName,
+    remark,  
     code,
   } = req.body;
 
@@ -103,7 +104,7 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Detect changes
+  
     // Detect changes
     const changes = {};
     if (taskName && taskName !== existingTask.taskName)
@@ -141,6 +142,11 @@ router.put("/:id", async (req, res) => {
     if (code && code !== existingTask.code)
       changes.code = `Changed task code to "${code}"`;
 
+     // Detect and update the remark
+     if (remark && remark !== existingTask.remark)
+      changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
+
+
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
       id,
@@ -156,6 +162,7 @@ router.put("/:id", async (req, res) => {
         department,
         clientName,
         code,
+        remark, // Add the remark here
       },
       { new: true }
     );
@@ -173,15 +180,7 @@ router.put("/:id", async (req, res) => {
       const email = assignee.email;
       const name = assignee.name;
     
-      // const subject = `Task Updated: ${updatedTask.taskName}`;
-      // const text = `Hello ${name},\n\nThe task "${
-      //   updatedTask.taskName
-      // }" has been updated. Please see the details below:\n\n${Object.values(
-      //   changes
-      // ).join("\n")}\n\nBest regards,\nTask Management System`;
-    
-      // await sendEmail(email, subject, text);
-    
+ 
       const notification = new Notification({
         recipientEmail: email,
         message: `Task "${updatedTask.taskName}" has been updated.`,
@@ -233,97 +232,6 @@ router.put("/:id", async (req, res) => {
       .json({ message: "Server error while updating task", error });
   }
 });
-
-// Mark task as completed
-// router.patch("/:id", async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { completed } = req.body;
-//     const userEmail = req.headers["x-user-email"]; // Employee email
-//     const userName = req.headers["x-user-name"]; // Employee name
-
-//     const updateData = {
-//       completed,
-//       ...(completed && {
-//         completedAt: new Date(),
-//         completedBy: {
-//           name: userName,
-//           email: userEmail,
-//         },
-//       }),
-//     };
-
-//     // Update task data
-//     const updatedTask = await Task.findByIdAndUpdate(id, updateData, {
-//       new: true,
-//     });
-
-//     if (!updatedTask) {
-//       return res.status(404).json({ message: "Task not found" });
-//     }
-
-//     // If the task is completed, notify the admin(s)
-//     if (completed) {
-//       const io = req.app.get("io");
-//       const userSocketMap = req.app.get("userSocketMap");
-
-//       // Fetch the role from headers (assuming you send the role from frontend)
-//       const role = req.headers["x-user-role"]; // Passed from frontend as 'admin' or 'employee'
-
-//       if (role === "admin") {
-//         // If the user is an admin, fetch all admin sockets
-//         const adminEntries = Object.entries(userSocketMap).filter(
-//           ([email, socketId]) => {
-//             // Check for any users with admin role (you can adjust this check accordingly)
-//             return true; // Assume all admins are included in this logic
-//           }
-//         );
-
-//         // Send notification to all admins
-//         adminEntries.forEach(([adminEmail, adminSocketId]) => {
-//           io.to(adminSocketId).emit("task-completed", {
-//             taskName: updatedTask.name,
-//             userName: userName,
-//             date: new Date().toISOString(), // Use ISO string for consistency
-//           });
-//         });
-
-
-//       // Trigger Admin Notification Route
-//       // const notificationData = {
-//       //   taskName: updatedTask.name,
-//       //   userName: userName,
-//       //   date: new Date().toISOString(),
-//       //   type: 'admin',
-//       // };
-      
-//       const notificationData = {
-//         taskName: updatedTask.name,
-//         userName: userName,
-//         date: new Date().toISOString(),  // Ensure the correct date format
-//         recipientEmail: 'admin@example.com',  // Ensure this is set correctly, or dynamically fetch the admin's email
-//         message: `${userName} completed the task: ${updatedTask.name}`,
-//         taskId: updatedTask._id,  // Ensure this is set
-//         type: 'admin',  // This is important to distinguish the notification type
-//       };
-
-//       // Call the admin notification route here to generate admin notification
-//       await axios.post('http://localhost:5000/api/notifications/admin', notificationData)
-//         .then(response => {
-//           console.log('Admin notification sent:', response.data);
-//         })
-//         .catch(error => {
-//           console.error('Error sending admin notification:', error);
-//         });
-
-//     }
-
-//     res.json(updatedTask);
-//   } catch (err) {
-//     console.error("Error updating task:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
 
 // Delete a task (optional)
 router.delete("/:id", async (req, res) => {
