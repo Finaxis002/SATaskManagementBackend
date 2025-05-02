@@ -208,15 +208,15 @@ async function sendTaskReminder(task) {
 //     console.log("⏸️ Not reminder time. Skipping...");
 //     return;
 //   }
-const isMorningReminder = (currentHourIST === 10 && currentMinuteIST >= 58) || (currentHourIST === 11 && currentMinuteIST <= 2);
-const isEveningReminder = (currentHourIST === 16 && currentMinuteIST >= 58) || (currentHourIST === 17 && currentMinuteIST <= 2);
-const isSixPMReminder = (currentHourIST === 17 && currentMinuteIST >= 58) || (currentHourIST === 18 && currentMinuteIST <= 2);
-const isSixThirtyPMReminder = (currentHourIST === 15 && currentMinuteIST >= 29) && (currentMinuteIST <= 32);
+const isMorningReminder = (currentHourIST === 10 && currentMinuteIST >= 59) || (currentHourIST === 11 && currentMinuteIST <= 0);
+const isEveningReminder = (currentHourIST === 16 && currentMinuteIST >= 59) || (currentHourIST === 17 && currentMinuteIST <= 0);
+const isSixPMReminder = (currentHourIST === 17 && currentMinuteIST >= 59) || (currentHourIST === 18 && currentMinuteIST <= 0);
+// const isSixThirtyPMReminder = (currentHourIST === 15 && currentMinuteIST >= 29) && (currentMinuteIST <= 32);
 
 
 
 // Only proceed if it's the scheduled time
-if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
+if (!(isMorningReminder || isEveningReminder || isSixPMReminder)) {
   console.log("⏸️ Not reminder time. Skipping...");
   return;
 }
