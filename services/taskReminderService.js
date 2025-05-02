@@ -216,7 +216,7 @@ const isSixPMReminder = (currentHourIST === 17 && currentMinuteIST >= 59) || (cu
 
 
 // Only proceed if it's the scheduled time
-if (!(isMorningReminder || isEveningReminder || isSixPMReminder || isSixThirtyPMReminder)) {
+if (!(isMorningReminder || isEveningReminder || isSixPMReminder)) {
   console.log("⏸️ Not reminder time. Skipping...");
   return;
 }
