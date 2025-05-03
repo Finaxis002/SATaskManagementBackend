@@ -5,7 +5,7 @@ const EmployeeSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   position: { type: String, required: true },
   department: { 
-    type: String, 
+    type: [String], 
     required: true // ✅ keep required
     // 🔴 REMOVE enum and default if you're accepting dynamic departments
   },
