@@ -19,7 +19,6 @@ const TaskSchema = new mongoose.Schema({
     type: [String],
     required: false, // Same as above
   },
-
   clientName: {
     type: String,
     required: false,
