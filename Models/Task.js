@@ -16,7 +16,7 @@ const TaskSchema = new mongoose.Schema({
   },
 
   department: {
-    type: String,
+    type: [String],
     required: false, // Same as above
   },
 
