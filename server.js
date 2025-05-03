@@ -9,6 +9,7 @@ const taskRoutes = require("./Routes/taskRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
 const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
+const departmentRoutes = require("./Routes/departmentRoutes");
 
 dotenv.config(); // Load .env
 
@@ -39,6 +40,9 @@ app.use("/api/employees", emploeeRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api", messageRoute);
+
+app.use("/api/departments", departmentRoutes);
+
 
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
