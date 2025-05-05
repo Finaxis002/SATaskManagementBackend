@@ -4,19 +4,14 @@ const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 
 // const { userSocketMap } = require("../server");
-const axios = require('axios');
-const { sendTaskReminder } = require("../services/taskReminderService"); 
-
-
-
-
+const axios = require("axios");
+const { sendTaskReminder } = require("../services/taskReminderService");
 
 const Notification = require("../Models/Notification");
 const io = require("../socket/socket");
 const {
   emitUnreadNotificationCount,
 } = require("../utils/emitNotificationCount");
-
 
 router.post("/", async (req, res) => {
   try {
@@ -47,20 +42,30 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // ✅ Always notify admin (even if 0 assignees)
+    const adminNotification = new Notification({
+      message: `A new task "${savedTask.taskName}" was created.`,
+      taskId: savedTask._id,
+      action: "task-created",
+      type: "admin",
+      read: false,
+      createdAt: new Date(),
+    });
+    await adminNotification.save();
+    io.emit("admin-notification", adminNotification);
 
     // Emit task to assigned user if socket exists
     if (userEmail && global.userSocketMap[userEmail]) {
-      console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
-      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
+      console.log(`Sending task to user: ${userEmail}`); // Log before emitting
+      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask); // Emit task to assigned user
       console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
     } else {
       console.log("No socket found for the user or email not assigned");
     }
-    
 
     io.emit("new-task-created", savedTask);
     console.log("📡 Backend emitted notificationCountUpdated");
-await sendTaskReminder(savedTask); 
+    await sendTaskReminder(savedTask);
 
     res.status(201).json({ message: "Task created", task: savedTask });
   } catch (error) {
@@ -94,7 +99,7 @@ router.put("/:id", async (req, res) => {
     taskCategory,
     department,
     clientName,
-    remark,  
+    remark,
     code,
   } = req.body;
 
@@ -104,7 +109,6 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-  
     // Detect changes
     const changes = {};
     if (taskName && taskName !== existingTask.taskName)
@@ -142,10 +146,9 @@ router.put("/:id", async (req, res) => {
     if (code && code !== existingTask.code)
       changes.code = `Changed task code to "${code}"`;
 
-     // Detect and update the remark
-     if (remark && remark !== existingTask.remark)
+    // Detect and update the remark
+    if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
-
 
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
@@ -176,11 +179,10 @@ router.put("/:id", async (req, res) => {
         console.log(`⏭️ Skipping notification for updater: ${assignee.email}`);
         continue;
       }
-    
+
       const email = assignee.email;
       const name = assignee.name;
-    
- 
+
       const notification = new Notification({
         recipientEmail: email,
         message: `Task "${updatedTask.taskName}" has been updated.`,
@@ -191,14 +193,13 @@ router.put("/:id", async (req, res) => {
         details: changes,
         read: false,
       });
-    
+
       await notification.save();
-    
+
       // ✅ Emit count update only to this user
       await emitUnreadNotificationCount(io, email);
       console.log(`📢 User notification sent and count emitted for: ${email}`);
     }
-    
 
     // 🔔 2. Notify all admins (no email, just role)
     const adminNotification = new Notification({
@@ -243,7 +244,4 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-
-
 module.exports = router;
-
