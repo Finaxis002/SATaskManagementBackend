@@ -294,7 +294,7 @@ router.get("/group-members", async (req, res) => {
 
 
 // Define the API endpoint to upload files
-router.post("/upload", upload.single("file"), (req, res) => {
+router.post("/api/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).send({ message: "No file uploaded" });
   }
