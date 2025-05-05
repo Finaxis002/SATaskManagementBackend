@@ -142,6 +142,39 @@ router.get("/group-unread-counts", async (req, res) => {
   }
 });
 
+
+// Add this to your backend routes
+router.get("/user-unread-counts", async (req, res) => {
+  const { name } = req.query;
+  
+  try {
+    const results = await ChatMessage.aggregate([
+      {
+        $match: {
+          read: false,
+          sender: { $ne: name },
+          group: { $exists: false } // Only individual messages
+        }
+      },
+      {
+        $group: {
+          _id: "$sender",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = {};
+    results.forEach(item => {
+      counts[item._id] = item.count;
+    });
+
+    res.json({ userUnreadCounts: counts });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // PUT /api/mark-read-group
 router.put("/mark-read-group", async (req, res) => {
   const { name, group } = req.body;
