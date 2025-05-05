@@ -1,5 +1,3 @@
-const mongoose = require("mongoose");
-
 const chatMessageSchema = new mongoose.Schema({
   sender: {
     type: String,
@@ -24,6 +22,18 @@ const chatMessageSchema = new mongoose.Schema({
   read: {
     type: Boolean,
     default: false,
+  },
+  file: {
+    type: String, // Store the file URL
+    required: false, // This is optional, as not every message will have a file
+  },
+  fileName: {
+    type: String, // Store the file name
+    required: false,
+  },
+  fileSize: {
+    type: String, // Store the file size
+    required: false,
   },
 }, { timestamps: true });
 
