@@ -42,13 +42,18 @@ router.post("/", async (req, res) => {
     }
 
     // Always notify admin
+    // Always notify admin - updated version with creator info
     const adminNotification = new Notification({
-      message: `A new task "${savedTask.taskName}" was created.`,
+      message: `A new task "${savedTask.taskName}" was created by ${
+        savedTask.assignedBy?.name || "unknown"
+      }.`,
       taskId: savedTask._id,
       action: "task-created",
       type: "admin",
       read: false,
       createdAt: new Date(),
+      createdBy: savedTask.assignedBy?.name || "unknown", // Additional field for creator
+      createdByEmail: savedTask.assignedBy?.email || "unknown", // Additional field for creator email
     });
 
     await adminNotification.save();
@@ -69,7 +74,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
-
 
 // Get all tasks
 router.get("/", async (req, res) => {
