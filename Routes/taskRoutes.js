@@ -20,6 +20,7 @@ router.post("/", async (req, res) => {
 
     const io = req.app.get("io");
 
+    // Send notification to each assignee
     if (Array.isArray(savedTask.assignees)) {
       for (const assignee of savedTask.assignees) {
         const email = assignee.email;
@@ -35,14 +36,12 @@ router.post("/", async (req, res) => {
         });
 
         await notification.save();
-
-        // ✅ Emit for each user inside the loop
-        await emitUnreadNotificationCount(io, email);
+        await emitUnreadNotificationCount(io, email); // 🔁 real-time for user
         console.log(`📡 Emitted notificationCountUpdated for ${email}`);
       }
     }
 
-    // ✅ Always notify admin (even if 0 assignees)
+    // Always notify admin
     const adminNotification = new Notification({
       message: `A new task "${savedTask.taskName}" was created.`,
       taskId: savedTask._id,
@@ -51,20 +50,17 @@ router.post("/", async (req, res) => {
       read: false,
       createdAt: new Date(),
     });
+
     await adminNotification.save();
+    await emitUnreadNotificationCount(io, "admin"); // 🔁 real-time for admin
     io.emit("admin-notification", adminNotification);
 
     // Emit task to assigned user if socket exists
     if (userEmail && global.userSocketMap[userEmail]) {
-      console.log(`Sending task to user: ${userEmail}`); // Log before emitting
-      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask); // Emit task to assigned user
-      console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
-    } else {
-      console.log("No socket found for the user or email not assigned");
+      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask);
     }
 
     io.emit("new-task-created", savedTask);
-    console.log("📡 Backend emitted notificationCountUpdated");
     await sendTaskReminder(savedTask);
 
     res.status(201).json({ message: "Task created", task: savedTask });
@@ -73,6 +69,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
+
 
 // Get all tasks
 router.get("/", async (req, res) => {

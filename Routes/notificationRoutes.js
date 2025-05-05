@@ -32,22 +32,6 @@ router.get("/unread-count/:email", async (req, res) => {
 
 
 
-router.get("/unread-count/admin", async (req, res) => {
-  try {
-    // Fetch all unread notifications where read: false
-    const unreadNotifications = await Notification.countDocuments({
-      read: false, // Only unread notifications
-    });
-
-    // Send the count as the response
-    res.json({ unreadCount: unreadNotifications });
-  } catch (error) {
-    console.error("Error fetching unread notifications for admin:", error);
-    res.status(500).json({ message: "Failed to fetch unread notifications", error });
-  }
-});
-
-
 // Mark all as read
 router.patch("/mark-all-read/:email", async (req, res) => {
   try {
