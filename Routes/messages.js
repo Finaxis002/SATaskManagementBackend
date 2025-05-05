@@ -5,43 +5,9 @@ const Employee = require("../Models/Employee");
 const upload = require("../upload")
 const path = require("path");
 
-// router.post("/messages/:group", async (req, res) => {
-//   const { group } = req.params;
-//   const { sender, text, timestamp } = req.body;
-
-//   console.log("Received message:", { sender, text, timestamp, group });
-
-//   if (!sender || !text || !timestamp) {
-//     return res.status(400).json({ message: "Missing required fields" });
-//   }
-
-//   try {
-//     const newMessage = new ChatMessage({
-//       sender,
-//       text,
-//       timestamp,
-//       group,
-//     });
-
-//     const savedMessage = await newMessage.save();
-//     const io = req.app.get("io");
-//     io.emit("receiveMessage", savedMessage);
-//     io.emit("inboxCountUpdated");
-    
-//     res.status(201).json(savedMessage);  // Respond with saved message
-//   } catch (err) {
-//     console.error("❌ Error saving message:", err);
-//     res.status(500).json({ message: "Failed to save message", error: err.message });
-//   }
-// });
-
-// Enhanced API for fetching group messages with pagination and filtering
-
-
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
   const { sender, text, timestamp } = req.body;
-  const file = req.file;
 
   console.log("Received message:", { sender, text, timestamp, group });
 
@@ -50,21 +16,12 @@ router.post("/messages/:group", async (req, res) => {
   }
 
   try {
-    // If there's a file uploaded, include the file details
-    const newMessageData = {
+    const newMessage = new ChatMessage({
       sender,
       text,
       timestamp,
       group,
-    };
-
-    if (file) {
-      newMessageData.file = `/uploads/${file.filename}`;  // Store the file URL
-      newMessageData.fileName = file.originalname; // Store the original file name
-      newMessageData.fileSize = formatFileSize(file.size); // Store the formatted file size
-    }
-
-    const newMessage = new ChatMessage(newMessageData);
+    });
 
     const savedMessage = await newMessage.save();
     const io = req.app.get("io");
@@ -78,7 +35,7 @@ router.post("/messages/:group", async (req, res) => {
   }
 });
 
-
+// Enhanced API for fetching group messages with pagination and filtering
 router.get("/messages/:group", async (req, res) => {
   const { group } = req.params; // Extract the group name from the URL parameters
   const { page = 1, limit = 10, read } = req.query; // Pagination with default values
