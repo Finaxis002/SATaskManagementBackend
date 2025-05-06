@@ -19,12 +19,16 @@ router.post("/", async (req, res) => {
     const task = new Task(req.body);
     const savedTask = await task.save();
 
-    // Save client to Client collection (upsert)
+    // Save client to Client collection (now tied to taskId)
     if (savedTask.clientName) {
-      await Client.updateOne(
-        { name: savedTask.clientName },
-        { $setOnInsert: { name: savedTask.clientName, createdAt: new Date() } },
-        { upsert: true }
+      await Client.findOneAndUpdate(
+        { taskId: savedTask._id },
+        {
+          name: savedTask.clientName,
+          taskId: savedTask._id,
+          createdAt: new Date(),
+        },
+        { upsert: true, new: true }
       );
     }
 
@@ -180,6 +184,14 @@ router.put("/:id", async (req, res) => {
       },
       { new: true }
     );
+    // Update client linked to this task
+    if (clientName) {
+      await Client.findOneAndUpdate(
+        { taskId: id }, // taskId = task._id
+        { name: clientName },
+        { new: true }
+      );
+    }
 
     const io = req.app.get("io");
 
