@@ -254,6 +254,19 @@ const initSocket = (httpServer) => {
       }
     });
 
+
+    // 🔔 On-demand login reminder trigger
+socket.on("request-login-reminder", (email) => {
+  const socketId = global.userSocketMap[email];
+  if (socketId) {
+    io.to(socketId).emit("task-reminder", `👋 Welcome back! Here’s your task reminder.`);
+    console.log("✅ Sent login reminder to:", email);
+  } else {
+    console.log("⚠️ Cannot send login reminder. No socket found for:", email);
+  }
+});
+
+
     // ✅ Task Reminder Event
     socket.on("task-reminder", (data) => {
       const { assigneeEmail, message } = data;
