@@ -11,6 +11,7 @@ const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
 const departmentRoutes = require("./Routes/departmentRoutes");
 const taskCodeRoutes = require('./Routes/taskCodeRoutes');
+const clientRoutes = require("./Routes/clients");
 dotenv.config(); // Load .env
 
 const app = express();
@@ -43,7 +44,7 @@ app.use("/api", messageRoute);
 
 app.use("/api/departments", departmentRoutes);
 app.use('/api/task-codes', taskCodeRoutes);
-
+app.use("/api/clients", clientRoutes);
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
