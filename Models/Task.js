@@ -80,6 +80,33 @@ const TaskSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isRepetitive: {
+    type: Boolean,
+    default: false,
+  },
+  
+  repeatType: {
+    type: String,
+    enum: ["Monthly", "Annually"],
+    required: function () {
+      return this.isRepetitive;
+    },
+  },
+  
+  repeatDay: {
+    type: Number, // Day of the month
+    required: function () {
+      return this.isRepetitive;
+    },
+  },
+  
+  repeatMonth: {
+    type: Number, // Only required if repeatType is "Annually"
+    required: function () {
+      return this.isRepetitive && this.repeatType === "Annually";
+    },
+  },
+  
 });
 
 

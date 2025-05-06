@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get all task codes
-router.get('/', async (req, res) => {
+router.get('/', async (req, res) => { 
   try {
     const codes = await TaskCode.find().sort({ name: 1 });
     res.json(codes);
