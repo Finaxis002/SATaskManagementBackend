@@ -256,15 +256,14 @@ const initSocket = (httpServer) => {
 
 
     // 🔔 On-demand login reminder trigger
-socket.on("request-login-reminder", (email) => {
-  const socketId = global.userSocketMap[email];
-  if (socketId) {
-    io.to(socketId).emit("task-reminder", `👋 Welcome back! Here’s your task reminder.`);
-    console.log("✅ Sent login reminder to:", email);
-  } else {
-    console.log("⚠️ Cannot send login reminder. No socket found for:", email);
-  }
-});
+    socket.on("request-login-reminder", async (email) => {
+      try {
+        await sendLoginReminders(email);  // 🔁 Use your actual reminder logic
+        console.log("✅ Task-based login reminders sent to:", email);
+      } catch (err) {
+        console.error("❌ Error sending login reminders via socket:", err);
+      }
+    });
 
 
     // ✅ Task Reminder Event
