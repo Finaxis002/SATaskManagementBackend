@@ -167,28 +167,19 @@ router.post("/login", async (req, res) => {
 console.log('⏰ 2. Current time:', new Date().toISOString());
 
 
-setTimeout(() => {
-  const socketId = userSocketMap[user.email];
-  if (socketId && io) {
-    io.to(socketId).emit("task-reminder", `👋 Welcome ${user.name}! Here's a reminder to check today's tasks.`);
-    console.log("✅ Login toast reminder sent to", user.email);
-  } else {
-    console.log("⚠️ Still no socket for", user.email);
-  }
-}, 3000); // Wait 3 seconds to let socket connect
-
 
 
       // ✅ Fixed: Fire-and-forget with proper error handling
-    (async () => {
-      try {
-        console.log(`Starting reminders for ${user.email}`);
-        await sendLoginReminders(user.email);
-        console.log(`Reminders completed for ${user.email}`);
-      } catch (err) {
-        console.error("Reminder error:", err);
-      }
-    })();
+    // ✅ Run detailed task reminders
+(async () => {
+  try {
+    console.log(`📨 Running login reminders for ${user.email}`);
+    await sendLoginReminders(user.email); // <-- This now sends task name + due date
+    console.log(`✅ Login reminders sent for ${user.email}`);
+  } catch (err) {
+    console.error("❌ Reminder error:", err);
+  }
+})();
 
     return res.json({
       message: "Login successful",

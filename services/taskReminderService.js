@@ -405,23 +405,62 @@ async function sendTaskReminder(task) {
 //   }
 // }
 async function sendLoginReminders(userEmail) {
-  console.log('🔥 ENTERED sendLoginReminders for:', userEmail);
-  const socketId = userSocketMap[userEmail];
-  
-  if (!socketId) {
-    console.error('🔥 No socket ID for:', userEmail);
-    return;
-  }
+  try {
+    console.log(`🔍 Checking login reminders for: ${userEmail}`);
 
-  // Send immediate test reminder
-  io.to(socketId).emit('task-reminder', {
-    message: "DIRECT TEST from sendLoginReminders",
-    assigneeEmail: userEmail
-  });
-  
-  console.log('🔥 TEST reminder sent successfully');
-  return true;
+    const tasks = await Task.find({
+      status: { $ne: "Completed" },
+      "assignees.email": userEmail
+    }).sort({ dueDate: 1 });
+
+    console.log(`📋 Found ${tasks.length} pending tasks for ${userEmail}`);
+
+    const nowIST = moment().tz("Asia/Kolkata");
+    const todayUTC = moment.utc().startOf("day");
+    const socketId = userSocketMap[userEmail];
+
+    if (!socketId) {
+      console.log(`⚠️ No active socket for ${userEmail}`);
+      return;
+    }
+
+    tasks.forEach(task => {
+      if (!task.dueDate) {
+        console.log(`⏭️ Skipping task "${task.taskName}" - no due date`);
+        return;
+      }
+
+      const dueDateUTC = moment.utc(task.dueDate).startOf("day");
+      const diffDays = dueDateUTC.diff(todayUTC, "days");
+
+      const assignee = task.assignees.find(a => a.email === userEmail);
+      if (!assignee) return;
+
+      // Only send if within 0-2 days range
+      if (diffDays >= 0 && diffDays <= 2) {
+        let message;
+        if (diffDays === 0) {
+          message = `⚠️ TODAY: "${task.taskName || task.name}" due today for ${assignee.name}`;
+        } else {
+          message = `🔔 Reminder: "${task.taskName || task.name}" due in ${diffDays} day(s) for ${assignee.name}`;
+        }
+
+        io.to(socketId).emit('task-reminder', {
+          message,
+          assigneeEmail: userEmail,
+          type: 'login'
+        });
+
+        console.log("✅ Sent login reminder:", message);
+      } else {
+        console.log(`⏭️ Task "${task.taskName}" is not within login reminder range`);
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error in sendLoginReminders:", error);
+  }
 }
+
 
 function startCronJob() {
   console.log("⏰ Starting reminder cron job");
