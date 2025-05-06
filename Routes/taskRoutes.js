@@ -180,7 +180,14 @@ router.put("/:id", async (req, res) => {
       },
       { new: true }
     );
-
+    // ✅ Save/Update client in Client collection
+    if (clientName && clientName !== existingTask.clientName) {
+      await Client.updateOne(
+        { name: clientName },
+        { $setOnInsert: { name: clientName, createdAt: new Date() } },
+        { upsert: true }
+      );
+    }
     const io = req.app.get("io");
 
     // 🔔 1. Notify each user (assignee) — has email
