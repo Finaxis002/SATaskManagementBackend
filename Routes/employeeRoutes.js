@@ -3,6 +3,8 @@ const router = express.Router();
 const Employee = require("../Models/Employee");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+  
+  const { sendLoginReminders } = require("../services/taskReminderService");
 
 // Hardcoded admin credentials
 const adminUserId = "admin"; // Change this as needed
@@ -161,6 +163,11 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
+     // ✅ Send login reminders (non-blocking)
+     sendLoginReminders(user.email).catch(err => {
+      console.error("Reminder sending failed (non-critical):", err);
+    });
+    
     return res.json({
       message: "Login successful",
       token,
