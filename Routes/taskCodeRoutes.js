@@ -29,4 +29,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// DELETE /api/task-codes/:id
+router.delete("/:id", async (req, res) => {
+  try {
+    const deleted = await TaskCode.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Code not found" });
+    }
+    res.status(200).json({ message: "Code deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting code:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;
