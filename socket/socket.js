@@ -222,7 +222,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const { Server } = require("socket.io");
-
+const { sendLoginReminders } = require("../services/taskReminderService"); // 🔁 Import your reminder function
 // ✅ Keep both mappings
 global.userSocketMap = global.userSocketMap || {}; // email => socket.id (GLOBAL for reminders)
 const socketUserMap = {};                           // socket.id => email (LOCAL for disconnect)
