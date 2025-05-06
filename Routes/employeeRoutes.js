@@ -163,11 +163,17 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-     // ✅ Send login reminders (non-blocking)
-     sendLoginReminders(user.email).catch(err => {
-      console.error("Reminder sending failed (non-critical):", err);
-    });
-    
+      // ✅ Fixed: Fire-and-forget with proper error handling
+    (async () => {
+      try {
+        console.log(`Starting reminders for ${user.email}`);
+        await sendLoginReminders(user.email);
+        console.log(`Reminders completed for ${user.email}`);
+      } catch (err) {
+        console.error("Reminder error:", err);
+      }
+    })();
+
     return res.json({
       message: "Login successful",
       token,
