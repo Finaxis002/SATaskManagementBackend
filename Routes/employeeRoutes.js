@@ -163,6 +163,22 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
+    console.log('⏰ 1. Starting login reminder process for:', user.email);
+console.log('⏰ 2. Current time:', new Date().toISOString());
+
+
+setTimeout(() => {
+  const socketId = userSocketMap[user.email];
+  if (socketId && io) {
+    io.to(socketId).emit("task-reminder", `👋 Welcome ${user.name}! Here's a reminder to check today's tasks.`);
+    console.log("✅ Login toast reminder sent to", user.email);
+  } else {
+    console.log("⚠️ Still no socket for", user.email);
+  }
+}, 3000); // Wait 3 seconds to let socket connect
+
+
+
       // ✅ Fixed: Fire-and-forget with proper error handling
     (async () => {
       try {
