@@ -17,6 +17,31 @@ const {
 router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
+    // Normalize and validate repetition fields
+    if (req.body.isRepetitive) {
+      if (!["Monthly", "Annually"].includes(req.body.repeatType)) {
+        return res.status(400).json({ message: "Invalid repeatType" });
+      }
+
+      if (!req.body.repeatDay || isNaN(req.body.repeatDay)) {
+        return res
+          .status(400)
+          .json({ message: "Missing or invalid repeatDay" });
+      }
+
+      // For annual repetition, repeatMonth must also be present
+      if (
+        req.body.repeatType === "Annually" &&
+        (req.body.repeatMonth === undefined ||
+          req.body.repeatMonth < 1 ||
+          req.body.repeatMonth > 12)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "repeatMonth is required for annual repetition" });
+      }
+    }
+
     const savedTask = await task.save();
 
     // Save client to Client collection (now tied to taskId)
