@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
+const Client = require("../Models/Client");
 
 // const { userSocketMap } = require("../server");
 const axios = require("axios");
@@ -17,6 +18,15 @@ router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
     const savedTask = await task.save();
+
+    // Save client to Client collection (upsert)
+    if (savedTask.clientName) {
+      await Client.updateOne(
+        { name: savedTask.clientName },
+        { $setOnInsert: { name: savedTask.clientName, createdAt: new Date() } },
+        { upsert: true }
+      );
+    }
 
     const io = req.app.get("io");
 
