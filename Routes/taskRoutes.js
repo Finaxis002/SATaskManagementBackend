@@ -20,30 +20,30 @@ router.post("/", async (req, res) => {
     const now = new Date();
 
     // Handle repetition setup
-    if (task.isRepetitive) {
-      const repeatDay = task.repeatDay || now.getDate();
+    // if (task.isRepetitive) {
+    //   const repeatDay = task.repeatDay || now.getDate();
 
-      switch (task.repeatType) {
-        case "Daily":
-          task.nextRepetitionDate = new Date(now.setDate(now.getDate() + 1));
-          break;
-        case "Monthly":
-          task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 1, repeatDay);
-          break;
-        case "Quarterly":
-          task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 3, repeatDay);
-          break;
-        case "Every 6 Months":
-          task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 6, repeatDay);
-          break;
-        case "Annually":
-          const month = task.repeatMonth || now.getMonth() + 1;
-          task.nextRepetitionDate = new Date(now.getFullYear() + 1, month - 1, repeatDay);
-          break;
-      }
+    //   switch (task.repeatType) {
+    //     case "Daily":
+    //       task.nextRepetitionDate = new Date(now.setDate(now.getDate() + 1));
+    //       break;
+    //     case "Monthly":
+    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 1, repeatDay);
+    //       break;
+    //     case "Quarterly":
+    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 3, repeatDay);
+    //       break;
+    //     case "Every 6 Months":
+    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 6, repeatDay);
+    //       break;
+    //     case "Annually":
+    //       const month = task.repeatMonth || now.getMonth() + 1;
+    //       task.nextRepetitionDate = new Date(now.getFullYear() + 1, month - 1, repeatDay);
+    //       break;
+    //   }
 
-      task.repetitionCount = 1;
-    }
+    //   task.repetitionCount = 1;
+    // }
 
     // Save task
     const savedTask = await task.save();
