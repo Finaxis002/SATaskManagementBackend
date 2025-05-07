@@ -11,44 +11,61 @@ const scheduleTaskRepeats = async () => {
     const due = new Date(task.dueDate);
     const today = new Date(now.toDateString());
 
-    if (due.toDateString() === today.toDateString()) {
-      const newTask = new Task({
-        ...task.toObject(),
-        _id: undefined, // remove Mongo _id for new doc
-        assignedDate: new Date(),
-        createdAt: new Date(),
-        dueDate: getNextDueDate(task),
-      });
-
-      task.dueDate = newTask.dueDate;
-      task.repetitionCount += 1;
-
-      await newTask.save();
-      await task.save();
+    const repeatLimit = 365; // Repeat 1 year into future
+    const existingTasks = await Task.find({ isRepetitive: true });
+    
+    for (const task of existingTasks) {
+      const start = new Date(task.dueDate);
+      const repetitions = [];
+    
+      for (let i = 1; i <= repeatLimit; i++) {
+        const nextDate = getNextDueDate(task, i);
+        
+        // Only push future dates
+        if (nextDate > new Date()) {
+          repetitions.push(new Task({
+            ...task.toObject(),
+            _id: undefined,
+            assignedDate: new Date(),
+            createdAt: new Date(),
+            dueDate: nextDate,
+            repetitionCount: (task.repetitionCount || 1) + i,
+          }));
+        }
+      }
+    
+      if (repetitions.length > 0) {
+        await Task.insertMany(repetitions);
+        task.repetitionCount += repeatLimit;
+        await task.save();
+      }
     }
+    
   }
 };
 
-function getNextDueDate(task) {
+function getNextDueDate(task, offset = 1) {
   const current = new Date(task.dueDate);
   const day = task.repeatDay || current.getDate();
 
   switch (task.repeatType) {
     case "Daily":
-      return new Date(current.setDate(current.getDate() + 1));
+      return new Date(current.getFullYear(), current.getMonth(), current.getDate() + offset);
     case "Monthly":
-      return new Date(current.getFullYear(), current.getMonth() + 1, day);
+      return new Date(current.getFullYear(), current.getMonth() + offset, day);
     case "Quarterly":
-      return new Date(current.getFullYear(), current.getMonth() + 3, day);
+      return new Date(current.getFullYear(), current.getMonth() + offset * 3, day);
     case "Every 6 Months":
-      return new Date(current.getFullYear(), current.getMonth() + 6, day);
+      return new Date(current.getFullYear(), current.getMonth() + offset * 6, day);
     case "Annually":
       const month = task.repeatMonth || current.getMonth() + 1;
-      return new Date(current.getFullYear() + 1, month - 1, day);
+      return new Date(current.getFullYear() + offset, month - 1, day);
     default:
       return current;
   }
 }
+
+
 
 // ⏰ Schedule it to run every day at 12:00 AM
 cron.schedule("0 0 * * *", scheduleTaskRepeats);
