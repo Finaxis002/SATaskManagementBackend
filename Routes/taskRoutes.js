@@ -18,27 +18,33 @@ router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
     if (task.isRepetitive) {
-      const today = new Date();
-      const repeatDay = task.repeatDay || today.getDate();
+      const now = new Date();
+      const repeatDay = task.repeatDay || now.getDate();
     
       switch (task.repeatType) {
+        case "Every 5 Minutes":
+          task.nextRepetitionDate = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+          break;
         case "Daily":
-          task.nextRepetitionDate = new Date(today.setDate(today.getDate() + 1));
+          task.nextRepetitionDate = new Date(now.setDate(now.getDate() + 1));
           break;
         case "Monthly":
-          task.nextRepetitionDate = new Date(today.setMonth(today.getMonth() + 1, repeatDay));
+          task.nextRepetitionDate = new Date(now.setMonth(now.getMonth() + 1, repeatDay));
           break;
         case "Quarterly":
-          task.nextRepetitionDate = new Date(today.setMonth(today.getMonth() + 3, repeatDay));
+          task.nextRepetitionDate = new Date(now.setMonth(now.getMonth() + 3, repeatDay));
           break;
         case "Every 6 Months":
-          task.nextRepetitionDate = new Date(today.setMonth(today.getMonth() + 6, repeatDay));
+          task.nextRepetitionDate = new Date(now.setMonth(now.getMonth() + 6, repeatDay));
           break;
         case "Annually":
-          task.nextRepetitionDate = new Date(today.getFullYear() + 1, task.repeatMonth - 1, repeatDay);
+          task.nextRepetitionDate = new Date(now.getFullYear() + 1, task.repeatMonth - 1, repeatDay);
           break;
       }
+    
+      task.repetitionCount = 1; // Initialize repetition count
     }
+    
     
 
     const savedTask = await task.save();
