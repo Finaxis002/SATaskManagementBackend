@@ -17,30 +17,29 @@ const {
 router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
-    // Normalize and validate repetition fields
-    // if (req.body.isRepetitive) {
-    //   if (!["Monthly", "Annually"].includes(req.body.repeatType)) {
-    //     return res.status(400).json({ message: "Invalid repeatType" });
-    //   }
-
-    //   if (!req.body.repeatDay || isNaN(req.body.repeatDay)) {
-    //     return res
-    //       .status(400)
-    //       .json({ message: "Missing or invalid repeatDay" });
-    //   }
-
-    //   // For annual repetition, repeatMonth must also be present
-    //   if (
-    //     req.body.repeatType === "Annually" &&
-    //     (req.body.repeatMonth === undefined ||
-    //       req.body.repeatMonth < 1 ||
-    //       req.body.repeatMonth > 12)
-    //   ) {
-    //     return res
-    //       .status(400)
-    //       .json({ message: "repeatMonth is required for annual repetition" });
-    //   }
-    // }
+    if (task.isRepetitive) {
+      const today = new Date();
+      const repeatDay = task.repeatDay || today.getDate();
+    
+      switch (task.repeatType) {
+        case "Daily":
+          task.nextRepetitionDate = new Date(today.setDate(today.getDate() + 1));
+          break;
+        case "Monthly":
+          task.nextRepetitionDate = new Date(today.setMonth(today.getMonth() + 1, repeatDay));
+          break;
+        case "Quarterly":
+          task.nextRepetitionDate = new Date(today.setMonth(today.getMonth() + 3, repeatDay));
+          break;
+        case "Every 6 Months":
+          task.nextRepetitionDate = new Date(today.setMonth(today.getMonth() + 6, repeatDay));
+          break;
+        case "Annually":
+          task.nextRepetitionDate = new Date(today.getFullYear() + 1, task.repeatMonth - 1, repeatDay);
+          break;
+      }
+    }
+    
 
     const savedTask = await task.save();
 

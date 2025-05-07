@@ -13,6 +13,11 @@ const departmentRoutes = require("./Routes/departmentRoutes");
 const taskCodeRoutes = require('./Routes/taskCodeRoutes');
 const clientRoutes = require("./Routes/clients");
 dotenv.config(); // Load .env
+const scheduleTaskRepeats = require("./cron/repeatTaskScheduler");
+
+
+
+scheduleTaskRepeats(); // Initialize the cron job
 
 const app = express();
 
