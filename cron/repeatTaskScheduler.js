@@ -21,35 +21,67 @@ function getNextDueDate(dueDate, repeatType) {
 }
 
 const scheduleTaskRepeats = () => {
-  cron.schedule("0 0 * * *", async () => {
-    console.log("🔁 Cron job triggered to repeat tasks");
+//     cron.schedule("* * * * *", async () => {
+//     console.log("🔁 Cron job triggered to repeat tasks");
 
-    const today = new Date().toISOString().split("T")[0];
+//     const today = new Date().toISOString().split("T")[0];
 
-    const dueTasks = await Task.find({
+//     const dueTasks = await Task.find({
+//       isRepetitive: true,
+//       nextRepetitionDate: {
+//         $lte: new Date(today + "T23:59:59Z"),
+//       },
+//     });
+
+//     for (let task of dueTasks) {
+//       const newDueDate = getNextDueDate(task.dueDate, task.repeatType);
+//       const newNextRepetitionDate = getNextDueDate(task.nextRepetitionDate, task.repeatType);
+
+//       const newTask = new Task({
+//         ...task.toObject(),
+//         _id: undefined, // Let Mongoose generate a new ID
+//         createdAt: new Date(),
+//         assignedDate: new Date(),
+//         dueDate: newDueDate,
+//         nextRepetitionDate: newNextRepetitionDate,
+//       });
+
+//       await newTask.save();
+//       console.log(`✅ Repeated task: "${task.taskName}" for ${newDueDate.toDateString()}`);
+//     }
+//   });
+
+cron.schedule("*/5 * * * *", async () => {
+    console.log("⏱ Cron job triggered for 5-minute repetition");
+  
+    const now = new Date();
+  
+    const tasks = await Task.find({
       isRepetitive: true,
-      nextRepetitionDate: {
-        $lte: new Date(today + "T23:59:59Z"),
-      },
+      repeatType: "Every 5 Minutes",
+      nextRepetitionDate: { $lte: now },
     });
-
-    for (let task of dueTasks) {
-      const newDueDate = getNextDueDate(task.dueDate, task.repeatType);
-      const newNextRepetitionDate = getNextDueDate(task.nextRepetitionDate, task.repeatType);
-
+  
+    for (let task of tasks) {
+      const newCount = (task.repetitionCount || 1) + 1;
+  
       const newTask = new Task({
         ...task.toObject(),
-        _id: undefined, // Let Mongoose generate a new ID
+        _id: undefined,
         createdAt: new Date(),
         assignedDate: new Date(),
-        dueDate: newDueDate,
-        nextRepetitionDate: newNextRepetitionDate,
+        dueDate: new Date(), // optional: use current time or offset
+        nextRepetitionDate: new Date(Date.now() + 5 * 60 * 1000), // +5 minutes
+        taskName: `${task.taskName.split(" (")[0]} (${newCount * 5} minutes)`,
+        repetitionCount: newCount,
       });
-
+  
       await newTask.save();
-      console.log(`✅ Repeated task: "${task.taskName}" for ${newDueDate.toDateString()}`);
+      console.log(`✅ Created repeated task: "${newTask.taskName}"`);
     }
   });
+  
+
 };
 
 module.exports = scheduleTaskRepeats;
