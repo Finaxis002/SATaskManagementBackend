@@ -1,55 +1,56 @@
+// cron/scheduleTaskRepeats.js
+
 const cron = require("node-cron");
 const Task = require("../Models/Task");
 
-function getNextDueDate(dueDate, repeatType) {
-  const date = new Date(dueDate);
+const scheduleTaskRepeats = async () => {
+  const now = new Date();
+  const tasks = await Task.find({ isRepetitive: true });
 
-  switch (repeatType) {
+  for (const task of tasks) {
+    const due = new Date(task.dueDate);
+    const today = new Date(now.toDateString());
+
+    if (due.toDateString() === today.toDateString()) {
+      const newTask = new Task({
+        ...task.toObject(),
+        _id: undefined, // remove Mongo _id for new doc
+        assignedDate: new Date(),
+        createdAt: new Date(),
+        dueDate: getNextDueDate(task),
+      });
+
+      task.dueDate = newTask.dueDate;
+      task.repetitionCount += 1;
+
+      await newTask.save();
+      await task.save();
+    }
+  }
+};
+
+function getNextDueDate(task) {
+  const current = new Date(task.dueDate);
+  const day = task.repeatDay || current.getDate();
+
+  switch (task.repeatType) {
     case "Daily":
-      return new Date(date.setDate(date.getDate() + 1));
+      return new Date(current.setDate(current.getDate() + 1));
     case "Monthly":
-      return new Date(date.setMonth(date.getMonth() + 1));
+      return new Date(current.getFullYear(), current.getMonth() + 1, day);
     case "Quarterly":
-      return new Date(date.setMonth(date.getMonth() + 3));
+      return new Date(current.getFullYear(), current.getMonth() + 3, day);
     case "Every 6 Months":
-      return new Date(date.setMonth(date.getMonth() + 6));
+      return new Date(current.getFullYear(), current.getMonth() + 6, day);
     case "Annually":
-      return new Date(date.setFullYear(date.getFullYear() + 1));
+      const month = task.repeatMonth || current.getMonth() + 1;
+      return new Date(current.getFullYear() + 1, month - 1, day);
     default:
-      return date;
+      return current;
   }
 }
 
-const scheduleTaskRepeats = () => {
-    cron.schedule("* * * * *", async () => {
-    console.log("🔁 Cron job triggered to repeat tasks");
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const dueTasks = await Task.find({
-      isRepetitive: true,
-      nextRepetitionDate: {
-        $lte: new Date(today + "T23:59:59Z"),
-      },
-    });
-
-    for (let task of dueTasks) {
-      const newDueDate = getNextDueDate(task.dueDate, task.repeatType);
-      const newNextRepetitionDate = getNextDueDate(task.nextRepetitionDate, task.repeatType);
-
-      const newTask = new Task({
-        ...task.toObject(),
-        _id: undefined, // Let Mongoose generate a new ID
-        createdAt: new Date(),
-        assignedDate: new Date(),
-        dueDate: newDueDate,
-        nextRepetitionDate: newNextRepetitionDate,
-      });
-
-      await newTask.save();
-      console.log(`✅ Repeated task: "${task.taskName}" for ${newDueDate.toDateString()}`);
-    }
-  });
-};
+// ⏰ Schedule it to run every day at 12:00 AM
+cron.schedule("0 0 * * *", scheduleTaskRepeats);
 
 module.exports = scheduleTaskRepeats;
