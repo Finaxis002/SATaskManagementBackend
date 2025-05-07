@@ -94,18 +94,22 @@ const TaskSchema = new mongoose.Schema({
   },
   
   repeatDay: {
-    type: Number, // Day of the month
+    type: Number,
     required: function () {
-      return this.isRepetitive;
+      return (
+        this.isRepetitive &&
+        ["Monthly", "Quarterly", "Every 6 Months", "Annually"].includes(this.repeatType)
+      );
     },
   },
   
   repeatMonth: {
-    type: Number, // Only required if repeatType is "Annually"
+    type: Number,
     required: function () {
       return this.isRepetitive && this.repeatType === "Annually";
     },
   },
+  
   repetitionCount: {
     type: Number,
     default: 1,
