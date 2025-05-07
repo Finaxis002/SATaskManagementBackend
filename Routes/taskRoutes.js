@@ -147,43 +147,55 @@ router.put("/:id", async (req, res) => {
     repeatMonth
   } = req.body;
 
-  try {
-    // Validate repetitive task fields if isRepetitive is true
-    if (isRepetitive) {
-      if (!repeatType || !repeatDay) {
-        return res.status(400).json({ 
-          message: "Repeat type and day are required for repetitive tasks" 
-        });
-      }
-      if (repeatType === "Annually" && !repeatMonth) {
-        return res.status(400).json({ 
-          message: "Repeat month is required for annual repetition" 
-        });
-      }
-    }
 
+  try {
     const existingTask = await Task.findById(id);
     if (!existingTask) {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Detect changes (add repetitive task fields)
+    // Detect changes
     const changes = {};
-    // ... (existing change detection code)
+    if (taskName && taskName !== existingTask.taskName)
+      changes.taskName = `Changed task name to "${taskName}"`;
 
-    if (isRepetitive !== undefined && isRepetitive !== existingTask.isRepetitive)
-      changes.isRepetitive = `Changed repetitive status to ${isRepetitive}`;
+    if (workDesc && workDesc !== existingTask.workDesc)
+      changes.workDesc = `Changed task Description to "${workDesc}"`;
 
-    if (repeatType && repeatType !== existingTask.repeatType)
-      changes.repeatType = `Changed repeat type to "${repeatType}"`;
+    if (priority && priority !== existingTask.priority)
+      changes.priority = `Changed priority to "${priority}"`;
 
-    if (repeatDay && repeatDay !== existingTask.repeatDay)
-      changes.repeatDay = `Changed repeat day to "${repeatDay}"`;
+    if (status && status !== existingTask.status)
+      changes.status = `Changed status to "${status}"`;
 
-    if (repeatMonth && repeatMonth !== existingTask.repeatMonth)
-      changes.repeatMonth = `Changed repeat month to "${repeatMonth}"`;
+    if (
+      dueDate &&
+      new Date(dueDate).toISOString() !== existingTask.dueDate.toISOString()
+    )
+      changes.dueDate = `Changed due date to "${new Date(
+        dueDate
+      ).toLocaleDateString()}"`;
 
-    // Update the task (include all fields)
+    if (overdueNote && overdueNote !== existingTask.overdueNote)
+      changes.overdueNote = `Changed overdue note`;
+
+    if (taskCategory && taskCategory !== existingTask.taskCategory)
+      changes.taskCategory = `Changed task category to "${taskCategory}"`;
+
+    if (department && department !== existingTask.department)
+      changes.department = `Changed department to "${department}"`;
+
+    if (clientName && clientName !== existingTask.clientName)
+      changes.clientName = `Changed client name to "${clientName}"`;
+
+    if (code && code !== existingTask.code)
+      changes.code = `Changed task code to "${code}"`;
+
+    // Detect and update the remark
+    if (remark && remark !== existingTask.remark)
+      changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
+
+    // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
       id,
       {
@@ -198,22 +210,80 @@ router.put("/:id", async (req, res) => {
         department,
         clientName,
         code,
-        remark,
-        isRepetitive,
-        repeatType,
-        repeatDay,
-        repeatMonth
+        remark, // Add the remark here
       },
       { new: true }
     );
+    // Update client linked to this task
+    if (clientName) {
+      await Client.findOneAndUpdate(
+        { taskId: id }, // taskId = task._id
+        { name: clientName },
+        { new: true }
+      );
+    }
 
-    // ... rest of your existing code
+    const io = req.app.get("io");
+
+    // 🔔 1. Notify each user (assignee) — has email
+    for (const assignee of updatedTask.assignees) {
+      // ✅ Skip sending notification to the person who made the update
+      if (updatedBy?.email === assignee.email) {
+        console.log(`⏭️ Skipping notification for updater: ${assignee.email}`);
+        continue;
+      }
+
+      const email = assignee.email;
+      const name = assignee.name;
+
+      const notification = new Notification({
+        recipientEmail: email,
+        message: `Task "${updatedTask.taskName}" has been updated.`,
+        taskId: updatedTask._id,
+        type: "user",
+        action: "task-updated",
+        updatedBy: JSON.stringify(updatedBy || { name: "System" }),
+        details: changes,
+        read: false,
+      });
+
+      await notification.save();
+
+      // ✅ Emit count update only to this user
+      await emitUnreadNotificationCount(io, email);
+      console.log(`📢 User notification sent and count emitted for: ${email}`);
+    }
+
+    // 🔔 2. Notify all admins (no email, just role)
+    const adminNotification = new Notification({
+      message: `Task "${updatedTask.taskName}" has been updated.`,
+      taskId: updatedTask._id,
+      type: "admin", // role-based
+      action: "task-updated",
+      updatedBy: JSON.stringify(updatedBy || { name: "System" }),
+      details: changes,
+      read: false,
+    });
+
+    await adminNotification.save();
+
+    // Emit count update for admins (frontend will re-fetch)
+    io.emit("notificationCountUpdated", {
+      email: "admin", // ✅ unified key
+      count: null, // frontend will re-fetch anyway
+    });
+
+    console.log("📢 Admin notification created & broadcasted");
+
+    // Emit updated task to everyone
+    io.emit("task-updated", updatedTask);
+
+    res.json(updatedTask);
   } catch (error) {
     console.error("❌ Failed to update task", error);
-    res.status(500).json({ 
-      message: "Server error while updating task",
-      error: error.message // Include actual error message
-    });
+    res
+      .status(500)
+      .json({ message: "Server error while updating task", error });
   }
 });
 
