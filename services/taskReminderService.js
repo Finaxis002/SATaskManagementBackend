@@ -53,6 +53,7 @@ async function sendTaskReminder(task) {
 
   const diffDays = dueDateUTC.diff(todayUTC, "days"); // Calculate difference in days
 
+
   // console.log("\n--- Reminder Check ---");
   // console.log("Task:", task.taskName || task.name);
   // console.log("Due:", dueDateUTC.toISOString());
@@ -64,17 +65,17 @@ async function sendTaskReminder(task) {
   const isMorningReminder =
     (currentHourIST === 10 && currentMinuteIST >= 59) ||
     (currentHourIST === 11 && currentMinuteIST <= 0);
+
   const isEveningReminder =
     (currentHourIST === 16 && currentMinuteIST >= 59) ||
     (currentHourIST === 17 && currentMinuteIST <= 0);
-  const isSixPMReminder =
-    (currentHourIST === 17 && currentMinuteIST >= 59) ||
-    (currentHourIST === 18 && currentMinuteIST <= 0);
-  // const isSixThirtyPMReminder = (currentHourIST === 15 && currentMinuteIST >= 29) && (currentMinuteIST <= 32);
+  
 
   // Only proceed if it's the scheduled time
-  if (!(isMorningReminder || isEveningReminder || isSixPMReminder)) {
-    // console.log("⏸️ Not reminder time. Skipping...");
+
+  if (!(isEveningReminder )) {
+    console.log("⏸️ Not reminder time. Skipping...");
+
     return;
   }
 
@@ -142,6 +143,182 @@ async function sendTaskReminder(task) {
   });
 }
 
+// async function sendLoginReminders(userEmail) {
+//   try {
+//     console.log(`🔍 Checking login reminders for: ${userEmail}`);
+    
+//     // Find all incomplete tasks assigned to this user
+//     const tasks = await Task.find({
+//       status: { $ne: "Completed" },
+//       "assignees.email": userEmail
+//     }).sort({ dueDate: 1 }); // Sort by due date ascending
+    
+//     console.log(`📋 Found ${tasks.length} pending tasks for ${userEmail}`);
+    
+//     const nowIST = moment().tz("Asia/Kolkata");
+//     const todayUTC = moment.utc().startOf("day");
+//     const socketId = userSocketMap[userEmail];
+    
+//     if (!socketId) {
+//       console.log(`⚠️ No active socket for ${userEmail}`);
+//       return;
+//     }
+
+//     // Group tasks by status for better organization
+//     const overdueTasks = [];
+//     const todayTasks = [];
+//     const upcomingTasks = [];
+    
+//     tasks.forEach(task => {
+//       if (!task.dueDate) {
+//         console.log(`⏭️ Skipping task "${task.taskName}" - no due date`);
+//         return;
+//       }
+      
+//       const dueDateUTC = moment.utc(task.dueDate).startOf("day");
+//       const diffDays = dueDateUTC.diff(todayUTC, "days");
+      
+//       const assignee = task.assignees.find(a => a.email === userEmail);
+//       if (!assignee) return;
+      
+//       if (diffDays < 0) {
+//         overdueTasks.push({ task, diffDays: Math.abs(diffDays) });
+//       } else if (diffDays === 0) {
+//         todayTasks.push(task);
+//       } else {
+//         upcomingTasks.push({ task, diffDays });
+//       }
+//     });
+
+//     // Send consolidated reminders (matches your existing toast format)
+//     if (overdueTasks.length > 0) {
+//       const message = `❗ You have ${overdueTasks.length} overdue task(s)`;
+//       const details = overdueTasks.map(t => 
+//         `"${t.task.taskName}" (${t.diffDays} day(s) late`
+//       ).join('\n');
+      
+//       io.to(socketId).emit('task-reminder', { 
+//         message,
+//         details,
+//         type: 'overdue',
+//         assigneeEmail: userEmail
+//       });
+//     }
+
+//     if (todayTasks.length > 0) {
+//       const message = `⚠️ You have ${todayTasks.length} task(s) due today`;
+//       const details = todayTasks.map(t => 
+//         `"${t.taskName}"`
+//       ).join('\n');
+      
+//       io.to(socketId).emit('task-reminder', { 
+//         message,
+//         details,
+//         type: 'today',
+//         assigneeEmail: userEmail
+//       });
+//     }
+
+//     if (upcomingTasks.length > 0) {
+//       const message = `🔔 You have ${upcomingTasks.length} upcoming task(s)`;
+//       const details = upcomingTasks.map(t => 
+//         `"${t.task.taskName}" (in ${t.diffDays} day(s))`
+//       ).join('\n');
+      
+//       io.to(socketId).emit('task-reminder', { 
+//         message,
+//         details,
+//         type: 'upcoming',
+//         assigneeEmail: userEmail
+//       });
+//     }
+
+//     // Also send individual reminders (like your cron job does)
+//     tasks.forEach(task => {
+//       const dueDateUTC = moment.utc(task.dueDate).startOf("day");
+//       const diffDays = dueDateUTC.diff(todayUTC, "days");
+      
+//       if (diffDays >= 0 && diffDays <= 2) {
+//         const assignee = task.assignees.find(a => a.email === userEmail);
+//         if (!assignee) return;
+        
+//         let message;
+//         if (diffDays === 0) {
+//           message = `⚠️ LOGIN REMINDER: "${task.taskName}" due today`;
+//         } else {
+//           message = `🔔 LOGIN REMINDER: "${task.taskName}" due in ${diffDays} day(s)`;
+//         }
+        
+//         io.to(socketId).emit('task-reminder', {
+//           message,
+//           assigneeEmail: userEmail,
+//           type: 'individual'
+//         });
+//       }
+//     });
+    
+//   } catch (error) {
+//     console.error("❌ Error sending login reminders:", error);
+//   }
+// }
+async function sendLoginReminders(userEmail) {
+  try {
+    console.log(`🔍 Checking login reminders for: ${userEmail}`);
+
+    const tasks = await Task.find({
+      status: { $ne: "Completed" },
+      "assignees.email": userEmail
+    }).sort({ dueDate: 1 });
+
+    console.log(`📋 Found ${tasks.length} pending tasks for ${userEmail}`);
+
+    const nowIST = moment().tz("Asia/Kolkata");
+    const todayUTC = moment.utc().startOf("day");
+    const socketId = userSocketMap[userEmail];
+
+    if (!socketId) {
+      console.log(`⚠️ No active socket for ${userEmail}`);
+      return;
+    }
+
+    tasks.forEach(task => {
+      if (!task.dueDate) {
+        console.log(`⏭️ Skipping task "${task.taskName}" - no due date`);
+        return;
+      }
+
+      const dueDateUTC = moment.utc(task.dueDate).startOf("day");
+      const diffDays = dueDateUTC.diff(todayUTC, "days");
+
+      const assignee = task.assignees.find(a => a.email === userEmail);
+      if (!assignee) return;
+
+      // Only send if within 0-2 days range
+      if (diffDays >= 0 && diffDays <= 2) {
+        let message;
+        if (diffDays === 0) {
+          message = `⚠️ TODAY: "${task.taskName || task.name}" due today for ${assignee.name}`;
+        } else {
+          message = `🔔 Reminder: "${task.taskName || task.name}" due in ${diffDays} day(s) for ${assignee.name}`;
+        }
+
+        io.to(socketId).emit('task-reminder', {
+          message,
+          assigneeEmail: userEmail,
+          type: 'login'
+        });
+
+        console.log("✅ Sent login reminder:", message);
+      } else {
+        console.log(`⏭️ Task "${task.taskName}" is not within login reminder range`);
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error in sendLoginReminders:", error);
+  }
+}
+
+
 function startCronJob() {
   // console.log("⏰ Starting reminder cron job");
   cron.schedule("* * * * *", async () => {
@@ -159,4 +336,5 @@ function startCronJob() {
 module.exports = {
   init,
   sendTaskReminder,
+  sendLoginReminders
 };
