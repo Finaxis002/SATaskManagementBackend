@@ -3,6 +3,8 @@ const router = express.Router();
 const Employee = require("../Models/Employee");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+  
+  const { sendLoginReminders } = require("../services/taskReminderService");
 
 // Hardcoded admin credentials
 const adminUserId = "admin"; // Change this as needed
@@ -160,6 +162,24 @@ router.post("/login", async (req, res) => {
       "your_jwt_secret",
       { expiresIn: "1h" }
     );
+
+    console.log('⏰ 1. Starting login reminder process for:', user.email);
+console.log('⏰ 2. Current time:', new Date().toISOString());
+
+
+
+
+      // ✅ Fixed: Fire-and-forget with proper error handling
+    // ✅ Run detailed task reminders
+(async () => {
+  try {
+    console.log(`📨 Running login reminders for ${user.email}`);
+    await sendLoginReminders(user.email); // <-- This now sends task name + due date
+    console.log(`✅ Login reminders sent for ${user.email}`);
+  } catch (err) {
+    console.error("❌ Reminder error:", err);
+  }
+})();
 
     return res.json({
       message: "Login successful",

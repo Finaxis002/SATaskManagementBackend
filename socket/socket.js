@@ -222,7 +222,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const { Server } = require("socket.io");
-
+const { sendLoginReminders } = require("../services/taskReminderService"); // 🔁 Import your reminder function
 // ✅ Keep both mappings
 global.userSocketMap = global.userSocketMap || {}; // email => socket.id (GLOBAL for reminders)
 const socketUserMap = {};                           // socket.id => email (LOCAL for disconnect)
@@ -253,6 +253,18 @@ const initSocket = (httpServer) => {
         console.log("❌ Registration failed, email or username missing");
       }
     });
+
+
+    // 🔔 On-demand login reminder trigger
+    socket.on("request-login-reminder", async (email) => {
+      try {
+        await sendLoginReminders(email);  // 🔁 Use your actual reminder logic
+        console.log("✅ Task-based login reminders sent to:", email);
+      } catch (err) {
+        console.error("❌ Error sending login reminders via socket:", err);
+      }
+    });
+
 
     // ✅ Task Reminder Event
     socket.on("task-reminder", (data) => {
