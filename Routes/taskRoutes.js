@@ -17,60 +17,61 @@ const {
 router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
+    const now = new Date();
+
+    // Handle repetition setup
     if (task.isRepetitive) {
-      const now = new Date();
       const repeatDay = task.repeatDay || now.getDate();
-    
+
       switch (task.repeatType) {
-        case "Every 5 Minutes":
-          task.nextRepetitionDate = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
-          break;
         case "Daily":
           task.nextRepetitionDate = new Date(now.setDate(now.getDate() + 1));
           break;
         case "Monthly":
-          task.nextRepetitionDate = new Date(now.setMonth(now.getMonth() + 1, repeatDay));
+          task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 1, repeatDay);
           break;
         case "Quarterly":
-          task.nextRepetitionDate = new Date(now.setMonth(now.getMonth() + 3, repeatDay));
+          task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 3, repeatDay);
           break;
         case "Every 6 Months":
-          task.nextRepetitionDate = new Date(now.setMonth(now.getMonth() + 6, repeatDay));
+          task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 6, repeatDay);
           break;
         case "Annually":
-          task.nextRepetitionDate = new Date(now.getFullYear() + 1, task.repeatMonth - 1, repeatDay);
+          const month = task.repeatMonth || now.getMonth() + 1;
+          task.nextRepetitionDate = new Date(now.getFullYear() + 1, month - 1, repeatDay);
           break;
       }
-    
-      task.repetitionCount = 1; // Initialize repetition count
-    }
-    
-    
 
+      task.repetitionCount = 1;
+    }
+
+    // Save task
     const savedTask = await task.save();
 
-    // Save client to Client collection (now tied to taskId)
+    // Save or upsert client safely
     if (savedTask.clientName) {
-      await Client.findOneAndUpdate(
-        { taskId: savedTask._id },
-        {
-          name: savedTask.clientName,
-          taskId: savedTask._id,
-          createdAt: new Date(),
-        },
-        { upsert: true, new: true }
-      );
+      try {
+        await Client.findOneAndUpdate(
+          { name: savedTask.clientName },
+          {
+            name: savedTask.clientName,
+            taskId: savedTask._id,
+            createdAt: new Date(),
+          },
+          { upsert: true, new: true }
+        );
+      } catch (clientError) {
+        console.warn("⚠️ Could not upsert client:", clientError.message);
+      }
     }
 
     const io = req.app.get("io");
 
-    // Send notification to each assignee
+    // Notify assignees
     if (Array.isArray(savedTask.assignees)) {
       for (const assignee of savedTask.assignees) {
-        const email = assignee.email;
-
         const notification = new Notification({
-          recipientEmail: email,
+          recipientEmail: assignee.email,
           message: `You have been assigned a new task: ${savedTask.taskName}`,
           taskId: savedTask._id,
           action: "task-created",
@@ -80,44 +81,40 @@ router.post("/", async (req, res) => {
         });
 
         await notification.save();
-        await emitUnreadNotificationCount(io, email); // 🔁 real-time for user
-        console.log(`📡 Emitted notificationCountUpdated for ${email}`);
+        await emitUnreadNotificationCount(io, assignee.email);
+        console.log(`📡 Notification count updated for ${assignee.email}`);
       }
     }
 
-    // Always notify admin
-    // Always notify admin - updated version with creator info
+    // Notify admin
     const adminNotification = new Notification({
-      message: `A new task "${savedTask.taskName}" was created by ${
-        savedTask.assignedBy?.name || "unknown"
-      }.`,
+      message: `A new task "${savedTask.taskName}" was created by ${savedTask.assignedBy?.name || "Unknown"}.`,
       taskId: savedTask._id,
       action: "task-created",
       type: "admin",
       read: false,
       createdAt: new Date(),
-      createdBy: savedTask.assignedBy?.name || "unknown", // Additional field for creator
-      createdByEmail: savedTask.assignedBy?.email || "unknown", // Additional field for creator email
+      createdBy: savedTask.assignedBy?.name || "unknown",
+      createdByEmail: savedTask.assignedBy?.email || "unknown",
     });
 
     await adminNotification.save();
-    await emitUnreadNotificationCount(io, "admin"); // 🔁 real-time for admin
+    await emitUnreadNotificationCount(io, "admin");
     io.emit("admin-notification", adminNotification);
 
-    // Emit task to assigned user if socket exists
-    if (userEmail && global.userSocketMap[userEmail]) {
-      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask);
-    }
-
+    // Emit to all for frontend updates
     io.emit("new-task-created", savedTask);
+
+    // Schedule reminder
     await sendTaskReminder(savedTask);
 
     res.status(201).json({ message: "Task created", task: savedTask });
   } catch (error) {
-    console.error("Error saving task:", error);
+    console.error("❌ Error saving task:", error);
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
+
 
 // Get all tasks
 router.get("/", async (req, res) => {
