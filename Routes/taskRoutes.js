@@ -194,6 +194,39 @@ router.put("/:id", async (req, res) => {
     // Detect and update the remark
     if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
+    
+    // Repetition-related change logging
+    if (isRepetitive !== existingTask.isRepetitive) {
+      changes.isRepetitive = isRepetitive
+        ? "Marked as a repetitive task"
+        : "Unmarked as a repetitive task";
+    }
+    
+    if (
+      isRepetitive &&
+      repeatType &&
+      repeatType !== existingTask.repeatType
+    ) {
+      changes.repeatType = `Changed Repeat Type to "${repeatType}"`;
+    }
+    
+    if (
+      isRepetitive &&
+      repeatDay &&
+      repeatDay !== existingTask.repeatDay
+    ) {
+      changes.repeatDay = `Changed Repeat Day to "${repeatDay}"`;
+    }
+    
+    if (
+      isRepetitive &&
+      repeatType === "Annually" &&
+      repeatMonth &&
+      repeatMonth !== existingTask.repeatMonth
+    ) {
+      changes.repeatMonth = `Changed Repeat Month to "${repeatMonth}"`;
+    }
+    
 
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
@@ -211,6 +244,10 @@ router.put("/:id", async (req, res) => {
         clientName,
         code,
         remark, // Add the remark here
+        isRepetitive,
+        repeatType,
+        repeatDay,
+        repeatMonth
       },
       { new: true }
     );
