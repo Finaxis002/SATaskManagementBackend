@@ -197,16 +197,6 @@ router.put("/:id", async (req, res) => {
     if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
     
-    // Repetition-related change logging
-    const castedIsRepetitive = isRepetitive === true || isRepetitive === "true";
-
-    // Now use this instead of raw isRepetitive
-    if (castedIsRepetitive !== existingTask.isRepetitive) {
-      changes.isRepetitive = castedIsRepetitive
-        ? "Marked as a repetitive task"
-        : "Unmarked as a repetitive task";
-    }
-    
     
     if (
       isRepetitive &&
