@@ -87,7 +87,7 @@ const TaskSchema = new mongoose.Schema({
   
   repeatType: {
     type: String,
-    enum: ["Every 5 Minutes", "Daily", "Monthly", "Quarterly", "Every 6 Months", "Annually"],
+    enum: ["Daily", "Monthly", "Quarterly", "Every 6 Months", "Annually"],
     required: function () {
       return this.isRepetitive;
     },
