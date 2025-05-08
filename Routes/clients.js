@@ -15,4 +15,57 @@ router.get("/", async (req, res) => {
   }
 });
 
+
+// POST /api/clients - Create a new client
+router.post("/", async (req, res) => {
+  try {
+    const { name, taskId } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Client name is required." });
+    }
+
+    const clientData = { name: name.trim() };
+
+    // Include taskId only if provided
+    if (taskId) {
+      clientData.taskId = taskId;
+    }
+
+    const newClient = new Client(clientData);
+    await newClient.save();
+
+    res.status(201).json({ message: "Client created successfully", client: newClient });
+  } catch (error) {
+    console.error("Error creating client:", error);
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
+
+
+
+
+// DELETE /api/clients - Delete client by name
+router.delete("/", async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Client name is required." });
+    }
+
+    const result = await Client.deleteOne({ name: name.trim() });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Client not found." });
+    }
+
+    res.json({ message: "Client deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting client:", error);
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
+
+
 module.exports = router;
