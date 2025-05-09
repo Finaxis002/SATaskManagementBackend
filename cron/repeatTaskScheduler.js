@@ -80,37 +80,48 @@ const Task = require("../Models/Task");
 
 const scheduleTaskRepeats = async () => {
   try {
+    const now = new Date();
+
     // Find all repetitive tasks that need their next occurrence created
     const tasks = await Task.find({ 
       isRepetitive: true,
       $or: [
-        { nextRepetitionDate: { $lte: new Date() } },
+        { nextRepetitionDate: { $lte: now } },
         { nextRepetitionDate: { $exists: false } }
       ]
     });
 
+    console.log(`[${now.toISOString()}] Found ${tasks.length} repetitive tasks to process.`);
+
     for (const task of tasks) {
       const nextDate = getNextDueDate(task);
-      
-      if (nextDate > new Date()) {
-        // Create the next occurrence
+
+      // Allow task if nextDate is today or later
+      if (nextDate.setHours(0,0,0,0) >= now.setHours(0,0,0,0)) {
+        const newTaskData = task.toObject();
+        delete newTaskData._id;
+        delete newTaskData.__v;
+
         const newTask = new Task({
-          ...task.toObject(),
-          _id: undefined,
-          assignedDate: new Date(),
-          createdAt: new Date(),
+          ...newTaskData,
+          assignedDate: now,
+          createdAt: now,
           dueDate: nextDate,
-          status: "To Do", // Reset status for new task
+          status: "To Do",
           repetitionCount: (task.repetitionCount || 1) + 1,
-          nextRepetitionDate: getNextDueDate(task, 2) // Set the date after next
+          nextRepetitionDate: getNextDueDate(task, 2),
         });
 
         await newTask.save();
-        
-        // Update original task with next repetition date
-        task.nextRepetitionDate = nextDate;
+
+        // Update original task's repetition details
+        task.nextRepetitionDate = getNextDueDate(task, 2);
         task.repetitionCount = (task.repetitionCount || 1) + 1;
         await task.save();
+
+        console.log(`Created new repetition of task ${task._id} for ${nextDate.toDateString()}`);
+      } else {
+        console.log(`Skipped task ${task._id} due to future nextDate: ${nextDate}`);
       }
     }
   } catch (error) {
@@ -139,7 +150,7 @@ function getNextDueDate(task, offset = 1) {
   }
 }
 
-// Schedule it to run every day at 12:00 AM
-cron.schedule("0 0 * * *", scheduleTaskRepeats);
+// ⏰ Run daily at 11:00 AM (server time)
+cron.schedule("0 11 * * *", scheduleTaskRepeats);
 
 module.exports = scheduleTaskRepeats;
