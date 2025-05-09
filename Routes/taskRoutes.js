@@ -3,6 +3,7 @@ const router = express.Router();
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 const Client = require("../Models/Client");
+const getNextDueDate = require("../utils/getNextDueDate");
 
 // const { userSocketMap } = require("../server");
 const axios = require("axios");
@@ -18,6 +19,12 @@ router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
     const now = new Date();
+
+    // Handle repetition setup
+    if (task.isRepetitive) {
+      task.nextRepetitionDate = getNextDueDate(task, 1); // Tomorrow or next logical date
+      task.repetitionCount = 1;
+    }
 
     // Handle repetition setup
     // if (task.isRepetitive) {
@@ -88,7 +95,9 @@ router.post("/", async (req, res) => {
 
     // Notify admin
     const adminNotification = new Notification({
-      message: `A new task "${savedTask.taskName}" was created by ${savedTask.assignedBy?.name || "Unknown"}.`,
+      message: `A new task "${savedTask.taskName}" was created by ${
+        savedTask.assignedBy?.name || "Unknown"
+      }.`,
       taskId: savedTask._id,
       action: "task-created",
       type: "admin",
@@ -114,7 +123,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
-
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -146,9 +154,8 @@ router.put("/:id", async (req, res) => {
     isRepetitive,
     repeatType,
     repeatDay,
-    repeatMonth
+    repeatMonth,
   } = req.body;
-
 
   try {
     const existingTask = await Task.findById(id);
@@ -196,24 +203,15 @@ router.put("/:id", async (req, res) => {
     // Detect and update the remark
     if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
-    
-    
-    if (
-      isRepetitive &&
-      repeatType &&
-      repeatType !== existingTask.repeatType
-    ) {
+
+    if (isRepetitive && repeatType && repeatType !== existingTask.repeatType) {
       changes.repeatType = `Changed Repeat Type to "${repeatType}"`;
     }
-    
-    if (
-      isRepetitive &&
-      repeatDay &&
-      repeatDay !== existingTask.repeatDay
-    ) {
+
+    if (isRepetitive && repeatDay && repeatDay !== existingTask.repeatDay) {
       changes.repeatDay = `Changed Repeat Day to "${repeatDay}"`;
     }
-    
+
     if (
       isRepetitive &&
       repeatType === "Annually" &&
@@ -222,7 +220,6 @@ router.put("/:id", async (req, res) => {
     ) {
       changes.repeatMonth = `Changed Repeat Month to "${repeatMonth}"`;
     }
-    
 
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
@@ -243,7 +240,7 @@ router.put("/:id", async (req, res) => {
         isRepetitive,
         repeatType,
         repeatDay,
-        repeatMonth
+        repeatMonth,
       },
       { new: true }
     );
