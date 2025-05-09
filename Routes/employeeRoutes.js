@@ -207,20 +207,37 @@ console.log('⏰ 2. Current time:', new Date().toISOString());
 });
 
 // Reset hardcoded admin password - keep this separate
-router.post("/reset-password/admin", (req, res) => {
-  const { newPassword } = req.body;
+router.post("/reset-password/admin", async (req, res) => {
+  try {
+    const { newPassword } = req.body;
 
-  if (!newPassword || newPassword.length < 4) {
-    return res
-      .status(400)
-      .json({ message: "Password must be at least 4 characters long" });
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ message: "Password must be at least 4 characters long" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // ✅ UPDATE the password in MainAdmin collection
+    const updatedAdmin = await MainAdmin.findOneAndUpdate(
+      { userId: "admin" },
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: "Admin account not found" });
+    }
+
+    console.log("✅ Admin password updated in database");
+    return res.json({ message: "Admin password reset successfully" });
+
+  } catch (err) {
+    console.error("❌ Admin password reset error:", err);
+    res.status(500).json({ message: "Server error" });
   }
-
-  adminPassword = newPassword;
-
-  console.log("✅ Admin password updated to:", adminPassword);
-  return res.json({ message: "Password reset successfully" });
 });
+
+
 
 // POST /api/employees/reset-password/:id - Reset password
 router.post("/reset-password/:id", async (req, res) => {

@@ -89,8 +89,6 @@ const insertDefaultAdmin = async () => {
 };
 
 
-
-
 insertDefaultAdmin();
 
 // Start server
