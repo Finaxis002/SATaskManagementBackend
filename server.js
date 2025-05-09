@@ -14,6 +14,8 @@ const taskCodeRoutes = require('./Routes/taskCodeRoutes');
 const clientRoutes = require("./Routes/clients");
 dotenv.config(); // Load .env
 const scheduleTaskRepeats = require("./cron/repeatTaskScheduler");
+const MainAdmin = require("./models/MainAdmin");
+const bcrypt = require("bcryptjs");
 
 
 
@@ -71,6 +73,19 @@ taskReminderService.init(io, userSocketMap);
 app.get("/", (req, res) => {
   res.send("Task Management Backend is running!");
 });
+
+const insertDefaultAdmin = async () => {
+  const exists = await MainAdmin.findOne({ userId: "admin" });
+  if (!exists) {
+    const hashed = await bcrypt.hash("admin123", 10);
+    await MainAdmin.create({
+      password: hashed
+    });
+    console.log("✅ Default admin credentials created.");
+  }
+};
+
+insertDefaultAdmin();
 
 // Start server
 const PORT = process.env.PORT || 5000;
