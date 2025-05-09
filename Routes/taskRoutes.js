@@ -119,9 +119,12 @@ router.post("/", async (req, res) => {
 
     let message = "Task created";
     if (savedTask.isRepetitive && savedTask.nextRepetitionDate) {
-      message += ` (This is a repetitive task. Next repetition on ${new Date(
-        savedTask.nextRepetitionDate
-      ).toLocaleDateString()})`;
+      const nextDate = new Date(savedTask.nextRepetitionDate);
+      const dd = String(nextDate.getDate()).padStart(2, "0");
+      const mm = String(nextDate.getMonth() + 1).padStart(2, "0");
+      const yy = String(nextDate.getFullYear()).slice(-2);
+
+      message += ` (This is a repetitive task. Next repetition on ${dd}/${mm}/${yy})`;
     }
 
     res.status(201).json({ message, task: savedTask });
@@ -259,7 +262,11 @@ router.put("/:id", async (req, res) => {
       await updatedTask.save(); // Persist updated nextRepetitionDate
 
       // Log it for admin/user notification
-      changes.nextRepetitionDate = `Updated next repetition date to "${newRepetitionDate.toLocaleDateString()}"`;
+      const dd = String(newRepetitionDate.getDate()).padStart(2, "0");
+      const mm = String(newRepetitionDate.getMonth() + 1).padStart(2, "0");
+      const yy = String(newRepetitionDate.getFullYear()).slice(-2);
+
+      changes.nextRepetitionDate = `Updated next repetition date to "${dd}/${mm}/${yy}"`;
     }
 
     // Update client linked to this task
