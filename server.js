@@ -14,7 +14,7 @@ const taskCodeRoutes = require('./Routes/taskCodeRoutes');
 const clientRoutes = require("./Routes/clients");
 dotenv.config(); // Load .env
 const scheduleTaskRepeats = require("./cron/repeatTaskScheduler");
-const MainAdmin = require("./models/MainAdmin");
+const MainAdmin = require("./Models/mainAdminCredentials");
 const bcrypt = require("bcryptjs");
 
 
