@@ -74,7 +74,7 @@ async function sendTaskReminder(task) {
   // Only proceed if it's the scheduled time
 
   if (!(isEveningReminder )) {
-    console.log("⏸️ Not reminder time. Skipping...");
+    // console.log("⏸️ Not reminder time. Skipping...");
 
     return;
   }
