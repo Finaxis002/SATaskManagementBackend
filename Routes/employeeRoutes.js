@@ -3,7 +3,7 @@ const router = express.Router();
 const Employee = require("../Models/Employee");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const MainAdmin = require("../models/MainAdmin");
+const MainAdmin = require("../Models/mainAdminCredentials");
   
   const { sendLoginReminders } = require("../services/taskReminderService");
 
