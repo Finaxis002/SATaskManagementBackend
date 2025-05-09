@@ -129,17 +129,18 @@ router.post("/login", async (req, res) => {
   const { userId, password } = req.body;
 
   // Admin Login
-  if (userId === adminUserId && password === adminPassword) {
-    const token = jwt.sign({ userId: adminUserId, role: "admin" }, "your_jwt_secret", { expiresIn: "1h" });
-    return res.json({
-      message: "Admin login successful",
-      token,
-      name: "Admin",
-      role: "admin",
-      email: "admin@example.com",
-      department: "Administrator" // ✅ optional, for consistency
-    });
-  }
+if (userId === adminUserId && password === adminPassword) {
+  const token = jwt.sign({ userId: adminUserId, role: "admin" }, "your_jwt_secret", { expiresIn: "1h" });
+  return res.json({
+    message: "Admin login successful",
+    token,
+    name: "Admin",
+    role: "admin",
+    email: "admin@example.com",
+    department: "Administrator"
+  });
+}
+
 
   try {
     const user = await Employee.findOne({ userId });
@@ -221,6 +222,23 @@ router.post("/reset-password/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// POST /api/auth/reset-password/admin
+router.post("/reset-password/admin", (req, res) => {
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 4) {
+    return res.status(400).json({ message: "Password must be at least 4 characters long" });
+  }
+
+  // Optional: check token if you want to restrict who can reset admin password
+  // if (req.user.role !== "admin") return res.status(403).json({ message: "Unauthorized" });
+
+  adminPassword = newPassword;
+
+  return res.json({ message: "Password reset successfully" });
+});
+
 
 
 module.exports = router;
