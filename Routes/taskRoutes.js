@@ -3,6 +3,7 @@ const router = express.Router();
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 const Client = require("../Models/Client");
+const getNextDueDate = require("../utils/getNextDueDate");
 
 // const { userSocketMap } = require("../server");
 const axios = require("axios");
@@ -18,6 +19,12 @@ router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);
     const now = new Date();
+
+    // Handle repetition setup
+    if (task.isRepetitive) {
+      task.nextRepetitionDate = getNextDueDate(task, 1); // Tomorrow or next logical date
+      task.repetitionCount = 1;
+    }
 
     // Handle repetition setup
     // if (task.isRepetitive) {
@@ -88,7 +95,9 @@ router.post("/", async (req, res) => {
 
     // Notify admin
     const adminNotification = new Notification({
-      message: `A new task "${savedTask.taskName}" was created by ${savedTask.assignedBy?.name || "Unknown"}.`,
+      message: `A new task "${savedTask.taskName}" was created by ${
+        savedTask.assignedBy?.name || "Unknown"
+      }.`,
       taskId: savedTask._id,
       action: "task-created",
       type: "admin",
@@ -108,13 +117,19 @@ router.post("/", async (req, res) => {
     // Schedule reminder
     await sendTaskReminder(savedTask);
 
-    res.status(201).json({ message: "Task created", task: savedTask });
+    let message = "Task created";
+    if (savedTask.isRepetitive && savedTask.nextRepetitionDate) {
+      message += ` (This is a repetitive task. Next repetition on ${new Date(
+        savedTask.nextRepetitionDate
+      ).toLocaleDateString()})`;
+    }
+
+    res.status(201).json({ message, task: savedTask });
   } catch (error) {
     console.error("❌ Error saving task:", error);
     res.status(500).json({ message: "Failed to create task", error });
   }
 });
-
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -146,9 +161,8 @@ router.put("/:id", async (req, res) => {
     isRepetitive,
     repeatType,
     repeatDay,
-    repeatMonth
+    repeatMonth,
   } = req.body;
-
 
   try {
     const existingTask = await Task.findById(id);
@@ -196,24 +210,15 @@ router.put("/:id", async (req, res) => {
     // Detect and update the remark
     if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
-    
-    
-    if (
-      isRepetitive &&
-      repeatType &&
-      repeatType !== existingTask.repeatType
-    ) {
+
+    if (isRepetitive && repeatType && repeatType !== existingTask.repeatType) {
       changes.repeatType = `Changed Repeat Type to "${repeatType}"`;
     }
-    
-    if (
-      isRepetitive &&
-      repeatDay &&
-      repeatDay !== existingTask.repeatDay
-    ) {
+
+    if (isRepetitive && repeatDay && repeatDay !== existingTask.repeatDay) {
       changes.repeatDay = `Changed Repeat Day to "${repeatDay}"`;
     }
-    
+
     if (
       isRepetitive &&
       repeatType === "Annually" &&
@@ -222,7 +227,6 @@ router.put("/:id", async (req, res) => {
     ) {
       changes.repeatMonth = `Changed Repeat Month to "${repeatMonth}"`;
     }
-    
 
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
@@ -243,10 +247,21 @@ router.put("/:id", async (req, res) => {
         isRepetitive,
         repeatType,
         repeatDay,
-        repeatMonth
+        repeatMonth,
       },
       { new: true }
     );
+
+    // Recalculate next repetition date if repetition settings changed
+    if (updatedTask.isRepetitive && (repeatType || repeatDay || repeatMonth)) {
+      const newRepetitionDate = getNextDueDate(updatedTask, 1);
+      updatedTask.nextRepetitionDate = newRepetitionDate;
+      await updatedTask.save(); // Persist updated nextRepetitionDate
+
+      // Log it for admin/user notification
+      changes.nextRepetitionDate = `Updated next repetition date to "${newRepetitionDate.toLocaleDateString()}"`;
+    }
+
     // Update client linked to this task
     if (clientName) {
       await Client.findOneAndUpdate(
@@ -311,7 +326,14 @@ router.put("/:id", async (req, res) => {
     // Emit updated task to everyone
     io.emit("task-updated", updatedTask);
 
-    res.json(updatedTask);
+    let message = "Task updated";
+    if (updatedTask.isRepetitive && updatedTask.nextRepetitionDate) {
+      message += ` (This is a repetitive task. Next repetition on ${new Date(
+        updatedTask.nextRepetitionDate
+      ).toLocaleDateString()})`;
+    }
+
+    res.json({ message, task: updatedTask });
   } catch (error) {
     console.error("❌ Failed to update task", error);
     res
