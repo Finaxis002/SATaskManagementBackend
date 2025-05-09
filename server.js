@@ -79,11 +79,17 @@ const insertDefaultAdmin = async () => {
   if (!exists) {
     const hashed = await bcrypt.hash("admin123", 10);
     await MainAdmin.create({
+      userId: "admin",          // ✅ Add this
+      email: "admin@example.com",
+      department: "Administrator",
       password: hashed
     });
     console.log("✅ Default admin credentials created.");
   }
 };
+
+
+
 
 insertDefaultAdmin();
 
