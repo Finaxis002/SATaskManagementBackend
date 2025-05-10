@@ -34,6 +34,10 @@ const TaskSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true },
   },
+  createdBy: {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+  },
 
   assignees: [
     {
@@ -128,8 +132,6 @@ const TaskSchema = new mongoose.Schema({
  
 });
 
-
-const Task = mongoose.models.Task || mongoose.model('Task', TaskSchema);
+const Task = mongoose.models.Task || mongoose.model("Task", TaskSchema);
 
 module.exports = Task;
-
