@@ -20,7 +20,53 @@ const {
 
 router.post("/", async (req, res) => {
   try {
-    const task = new Task(req.body);
+    // const task = new Task(req.body);
+    const {
+  taskName,
+  workDesc,
+  taskCategory,
+  department,
+  clientName,
+  code,
+  assignedBy,
+  assignees,
+  assignedDate,
+  dueDate,
+  priority,
+  status,
+  overdueNote,
+  remark,
+  createdBy, // ✅ extracted
+  isRepetitive,
+  repeatType,
+  repeatDay,
+  repeatMonth,
+  nextRepetitionDate
+} = req.body;
+
+const task = new Task({
+  taskName,
+  workDesc,
+  taskCategory,
+  department,
+  clientName,
+  code,
+  assignedBy,
+  assignees,
+  assignedDate,
+  dueDate,
+  priority,
+  status,
+  overdueNote,
+  remark,
+  createdBy, // ✅ now it will be stored
+  isRepetitive,
+  repeatType,
+  repeatDay,
+  repeatMonth,
+  nextRepetitionDate
+});
+
     const savedTask = await task.save();
 
     const io = req.app.get("io");
