@@ -120,8 +120,12 @@ const TaskSchema = new mongoose.Schema({
     type: Date,
     required: false,
   },
+ nextDueDate: {
+  type: Date,
+  required: false,
+},
+
  
-  
 });
 
 

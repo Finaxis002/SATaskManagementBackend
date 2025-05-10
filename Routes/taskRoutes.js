@@ -22,7 +22,9 @@ router.post("/", async (req, res) => {
 
     // Handle repetition setup
     if (task.isRepetitive) {
-      task.nextRepetitionDate = getNextDueDate(task, 1); // Tomorrow or next logical date
+      const nextDate = getNextDueDate(task, 1);
+      task.nextRepetitionDate = nextDate;
+      task.nextDueDate = nextDate; // ✅ NEW LINE
       task.repetitionCount = 1;
     }
 
@@ -256,18 +258,21 @@ router.put("/:id", async (req, res) => {
     );
 
     // Recalculate next repetition date if repetition settings changed
-    if (updatedTask.isRepetitive && (repeatType || repeatDay || repeatMonth)) {
-      const newRepetitionDate = getNextDueDate(updatedTask, 1);
-      updatedTask.nextRepetitionDate = newRepetitionDate;
-      await updatedTask.save(); // Persist updated nextRepetitionDate
+   if (updatedTask.isRepetitive && (repeatType || repeatDay || repeatMonth)) {
+  const newRepetitionDate = getNextDueDate(updatedTask, 1);
 
-      // Log it for admin/user notification
-      const dd = String(newRepetitionDate.getDate()).padStart(2, "0");
-      const mm = String(newRepetitionDate.getMonth() + 1).padStart(2, "0");
-      const yy = String(newRepetitionDate.getFullYear()).slice(-2);
+  updatedTask.nextRepetitionDate = newRepetitionDate;
+  updatedTask.nextDueDate = newRepetitionDate; // ✅ NEW LINE
+  await updatedTask.save();
 
-      changes.nextRepetitionDate = `Updated next repetition date to "${dd}/${mm}/${yy}"`;
-    }
+  const dd = String(newRepetitionDate.getDate()).padStart(2, "0");
+  const mm = String(newRepetitionDate.getMonth() + 1).padStart(2, "0");
+  const yy = String(newRepetitionDate.getFullYear()).slice(-2);
+
+  changes.nextRepetitionDate = `Updated next repetition date to "${dd}/${mm}/${yy}"`;
+  changes.nextDueDate = `Updated next due date to "${dd}/${mm}/${yy}"`; // ✅ OPTIONAL logging
+}
+
 
     // Update client linked to this task
     if (clientName) {
