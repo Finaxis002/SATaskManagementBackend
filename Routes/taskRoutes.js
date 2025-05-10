@@ -39,6 +39,7 @@ router.post("/", async (req, res) => {
       nextRepetitionDate,
     } = req.body;
 
+     const userEmail = assignedBy?.email || createdBy?.email || null;
     const task = new Task({
       taskName,
       workDesc,
