@@ -8,16 +8,27 @@ router.post('/', async (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
 
-    const existing = await TaskCode.findOne({ name });
+    // Count existing documents
+    const count = await TaskCode.countDocuments();
+
+    // Generate prefixed name with sno
+    const sno = count + 1;
+    const finalName = `${sno} ${name}`;
+
+    // Check if this exact name already exists
+    const existing = await TaskCode.findOne({ name: finalName });
     if (existing) return res.status(200).json(existing);
 
-    const taskCode = new TaskCode({ name });
+    // Save with modified name
+    const taskCode = new TaskCode({ name: finalName });
     const saved = await taskCode.save();
+
     res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // Get all task codes
 router.get('/', async (req, res) => { 
