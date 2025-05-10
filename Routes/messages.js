@@ -2,6 +2,8 @@ const ChatMessage = require("../Models/ChatMessage");
 const express = require("express");
 const router = express.Router();
 const Employee = require("../Models/Employee");
+const upload = require("../upload")
+const path = require("path");
 
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
@@ -142,6 +144,39 @@ router.get("/group-unread-counts", async (req, res) => {
   }
 });
 
+
+// Add this to your backend routes
+router.get("/user-unread-counts", async (req, res) => {
+  const { name } = req.query;
+  
+  try {
+    const results = await ChatMessage.aggregate([
+      {
+        $match: {
+          read: false,
+          sender: { $ne: name },
+          group: { $exists: false } // Only individual messages
+        }
+      },
+      {
+        $group: {
+          _id: "$sender",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = {};
+    results.forEach(item => {
+      counts[item._id] = item.count;
+    });
+
+    res.json({ userUnreadCounts: counts });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // PUT /api/mark-read-group
 router.put("/mark-read-group", async (req, res) => {
   const { name, group } = req.body;
@@ -256,6 +291,23 @@ router.get("/group-members", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+
+// Define the API endpoint to upload files
+router.post("/api/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ message: "No file uploaded" });
+  }
+
+  // The file was uploaded successfully
+  const fileUrl = `/uploads/${req.file.filename}`; // Construct the URL to access the file
+
+  // Send back the file URL as response
+  res.status(200).send({ fileUrl });
+});
+
+// Serve the uploaded files statically
+router.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 module.exports = router;

@@ -3,12 +3,17 @@ const router = express.Router();
 const Employee = require("../Models/Employee");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const MainAdmin = require("../Models/mainAdminCredentials");
   
   const { sendLoginReminders } = require("../services/taskReminderService");
 
 // Hardcoded admin credentials
-const adminUserId = "admin"; // Change this as needed
-const adminPassword = "admin123"; // Change this as needed
+let adminUserId = "admin"; // Change this as needed
+let adminPassword = "admin123"; // ✅ Now it's reassignable
+
+
+
+
 
 
 router.post("/", async (req, res) => {
@@ -127,20 +132,26 @@ router.delete("/:id", async (req, res) => {
 // POST /api/employees/login - Login route for both Admin and Employees
 router.post("/login", async (req, res) => {
   const { userId, password } = req.body;
+ // Check hardcoded admin from DB
+  const mainAdmin = await MainAdmin.findOne({ userId });
 
-  // Admin Login
-  if (userId === adminUserId && password === adminPassword) {
-    const token = jwt.sign({ userId: adminUserId, role: "admin" }, "your_jwt_secret", { expiresIn: "1h" });
-    return res.json({
-      message: "Admin login successful",
-      token,
-      name: "Admin",
-      role: "admin",
-      email: "admin@example.com",
-      department: "Administrator" // ✅ optional, for consistency
-    });
+  if (mainAdmin) {
+    const isMatch = await bcrypt.compare(password, mainAdmin.password);
+    if (isMatch) {
+      const token = jwt.sign({ userId: mainAdmin.userId, role: "admin" }, "your_jwt_secret", {
+        expiresIn: "1h",
+      });
+
+      return res.json({
+        message: "Admin login successful",
+        token,
+        name: "Admin",
+        role: "admin",
+        email: mainAdmin.email,
+        department: mainAdmin.department,
+      });
+    }
   }
-
   try {
     const user = await Employee.findOne({ userId });
     if (!user) {
@@ -195,6 +206,38 @@ console.log('⏰ 2. Current time:', new Date().toISOString());
   }
 });
 
+// Reset hardcoded admin password - keep this separate
+router.post("/reset-password/admin", async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ message: "Password must be at least 4 characters long" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // ✅ UPDATE the password in MainAdmin collection
+    const updatedAdmin = await MainAdmin.findOneAndUpdate(
+      { userId: "admin" },
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: "Admin account not found" });
+    }
+
+    console.log("✅ Admin password updated in database");
+    return res.json({ message: "Admin password reset successfully" });
+
+  } catch (err) {
+    console.error("❌ Admin password reset error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 
 // POST /api/employees/reset-password/:id - Reset password
 router.post("/reset-password/:id", async (req, res) => {
@@ -221,6 +264,7 @@ router.post("/reset-password/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
