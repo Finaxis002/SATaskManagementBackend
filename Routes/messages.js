@@ -7,49 +7,63 @@ const path = require("path");
 
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
-  const { sender, text, timestamp } = req.body;
+  const { sender, text, timestamp, recipient } = req.body; // Added recipient to the request body
 
-  console.log("Received message:", { sender, text, timestamp, group });
+  console.log("Received message:", { sender, text, timestamp, group, recipient });
 
+  // Check for missing fields
   if (!sender || !text || !timestamp) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
   try {
+    // Create a new message instance
     const newMessage = new ChatMessage({
       sender,
       text,
       timestamp,
       group,
+      recipient, // Store the recipient in case of direct messages
     });
 
+    // Save the message to the database
     const savedMessage = await newMessage.save();
-    const io = req.app.get("io");
-    io.emit("receiveMessage", savedMessage);
-    // emit only to sender and recipient for personal messages
-    if (message.recipient && message.sender) {
-      const recipientSocket = getSocketIdByName(message.recipient); // custom method you write
-      const senderSocket = getSocketIdByName(message.sender);
 
+    // Get the socket.io instance
+    const io = req.app.get("io");
+
+    // Emit the saved message to all connected clients
+    io.emit("receiveMessage", savedMessage);
+
+    // If the message has a recipient (personal message)
+    if (recipient) {
+      const recipientSocket = getSocketIdByName(recipient); // Get the socket ID of the recipient
+      const senderSocket = getSocketIdByName(sender); // Get the socket ID of the sender
+
+      // Emit inbox count update to both sender and recipient
       if (recipientSocket) io.to(recipientSocket).emit("inboxCountUpdated");
       if (senderSocket) io.to(senderSocket).emit("inboxCountUpdated");
-    } else if (message.group) {
-      // For group messages, notify all group members only (or just admins if needed)
-      const groupUsers = getUsersInGroup(message.group); // must be implemented
+    } 
+    // If it's a group message
+    else if (group) {
+      // Get the users in the group
+      const groupUsers = getUsersInGroup(group); // You must implement this function
+
+      // Emit inbox count update to all users in the group
       groupUsers.forEach((user) => {
-        const socketId = getSocketIdByName(user.name);
+        const socketId = getSocketIdByName(user.name); // Get the socket ID by username
         if (socketId) io.to(socketId).emit("inboxCountUpdated");
       });
     }
 
-    res.status(201).json(savedMessage); // Respond with saved message
+    // Respond with the saved message
+    res.status(201).json(savedMessage);
   } catch (err) {
     console.error("❌ Error saving message:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to save message", error: err.message });
+    res.status(500).json({ message: "Failed to save message", error: err.message });
   }
 });
+
 
 // Enhanced API for fetching group messages with pagination and filtering
 router.get("/messages/:group", async (req, res) => {
