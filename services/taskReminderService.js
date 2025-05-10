@@ -54,12 +54,7 @@ async function sendTaskReminder(task) {
   const diffDays = dueDateUTC.diff(todayUTC, "days"); // Calculate difference in days
 
 
-  // console.log("\n--- Reminder Check ---");
-  // console.log("Task:", task.taskName || task.name);
-  // console.log("Due:", dueDateUTC.toISOString());
-  // console.log("Today:", todayUTC.toISOString());
-  // console.log("Days until due:", diffDays);
-  // console.log("Current IST hour:", currentHourIST);
+
 
   
   const isMorningReminder =
