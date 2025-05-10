@@ -11,7 +11,15 @@ const cookieParser = require("cookie-parser");
 const messageRoute = require("./Routes/messages");
 const departmentRoutes = require("./Routes/departmentRoutes");
 const taskCodeRoutes = require('./Routes/taskCodeRoutes');
+const clientRoutes = require("./Routes/clients");
 dotenv.config(); // Load .env
+const scheduleTaskRepeats = require("./cron/repeatTaskScheduler");
+const MainAdmin = require("./Models/mainAdminCredentials");
+const bcrypt = require("bcryptjs");
+
+
+
+scheduleTaskRepeats(); // Initialize the cron job
 
 const app = express();
 
@@ -43,7 +51,7 @@ app.use("/api", messageRoute);
 
 app.use("/api/departments", departmentRoutes);
 app.use('/api/task-codes', taskCodeRoutes);
-
+app.use("/api/clients", clientRoutes);
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
@@ -65,6 +73,23 @@ taskReminderService.init(io, userSocketMap);
 app.get("/", (req, res) => {
   res.send("Task Management Backend is running!");
 });
+
+const insertDefaultAdmin = async () => {
+  const exists = await MainAdmin.findOne({ userId: "admin" });
+  if (!exists) {
+    const hashed = await bcrypt.hash("admin123", 10);
+    await MainAdmin.create({
+      userId: "admin",          // ✅ Add this
+      email: "admin@example.com",
+      department: "Administrator",
+      password: hashed
+    });
+    console.log("✅ Default admin credentials created.");
+  }
+};
+
+
+insertDefaultAdmin();
 
 // Start server
 const PORT = process.env.PORT || 5000;
