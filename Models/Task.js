@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const TaskSchema = new mongoose.Schema({
   taskName: {
     type: String,
@@ -64,7 +63,7 @@ const TaskSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ["To Do", "In Progress", "Completed", "Overdue" , "Abbstulate"],
+    enum: ["To Do", "In Progress", "Completed", "Overdue"],
     default: "To Do",
   },
 
@@ -85,51 +84,6 @@ const TaskSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  isRepetitive: {
-    type: Boolean,
-    default: false,
-  },
-  
-  repeatType: {
-    type: String,
-    enum: ["Daily", "Monthly", "Quarterly", "Every 6 Months", "Annually"],
-    required: function () {
-      return this.isRepetitive;
-    },
-  },
-  
-  repeatDay: {
-    type: Number,
-    required: function () {
-      return (
-        this.isRepetitive &&
-        ["Monthly", "Quarterly", "Every 6 Months", "Annually"].includes(this.repeatType)
-      );
-    },
-  },
-  
-  repeatMonth: {
-    type: Number,
-    required: function () {
-      return this.isRepetitive && this.repeatType === "Annually";
-    },
-  },
-  
-  repetitionCount: {
-    type: Number,
-    default: 1,
-  },
-  
-  nextRepetitionDate: {
-    type: Date,
-    required: false,
-  },
- nextDueDate: {
-  type: Date,
-  required: false,
-},
-
- 
 });
 
 const Task = mongoose.models.Task || mongoose.model("Task", TaskSchema);
