@@ -161,7 +161,7 @@ router.put("/:id", async (req, res) => {
     taskCategory,
     department,
     clientName,
-    remark,
+    remark, // ✅ this is correct
     code,
     isRepetitive,
     repeatType,
