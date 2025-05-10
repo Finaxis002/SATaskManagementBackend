@@ -21,44 +21,46 @@ const scheduleTaskRepeats = async () => {
       } repetitive tasks to process.`
     );
 
-    for (const task of tasks) {
-      const newDueDate = getNextDueDate(task, 1); // ⬅️ This will be the new task's `dueDate`
-      const nextDueDate = getNextDueDate(task, 2); // ⬅️ This will be the upcoming task's `nextDueDate`
+   for (const task of tasks) {
+  // Always base next repetitions from last known due date or nextRepetitionDate
+  const baseDate = task.nextRepetitionDate || task.dueDate;
 
-      if (newDueDate.setHours(0, 0, 0, 0) >= now.setHours(0, 0, 0, 0)) {
-        const newTaskData = task.toObject();
-        delete newTaskData._id;
-        delete newTaskData.__v;
+  const newDueDate = getNextDueDate({ ...task.toObject(), dueDate: baseDate }, 0); // current repetition
+  const nextDueDate = getNextDueDate({ ...task.toObject(), dueDate: baseDate }, 1); // future repetition
 
-        const newTask = new Task({
-          ...newTaskData,
-          assignedDate: now,
-          createdAt: now,
-          dueDate: newDueDate,
-          nextDueDate: nextDueDate, // ✅ add this field
-          nextRepetitionDate: nextDueDate, // ✅ also reuse this if you want repetition on same day
-          status: "To Do",
-          repetitionCount: (task.repetitionCount || 1) + 1,
-        });
+  if (newDueDate.setHours(0, 0, 0, 0) >= now.setHours(0, 0, 0, 0)) {
+    const newTaskData = task.toObject();
+    delete newTaskData._id;
+    delete newTaskData.__v;
 
-        await newTask.save();
+    const newTask = new Task({
+      ...newTaskData,
+      assignedDate: now,
+      createdAt: now,
+      dueDate: newDueDate,
+      nextDueDate: nextDueDate,
+      nextRepetitionDate: nextDueDate,
+      status: "To Do",
+      repetitionCount: (task.repetitionCount || 1) + 1,
+    });
 
-        // Update original task's repetition details
-        task.nextRepetitionDate = nextDueDate;
-        task.repetitionCount = (task.repetitionCount || 1) + 1;
-        await task.save();
+    await newTask.save();
 
-        console.log(
-          `Created new repetition of task ${
-            task._id
-          } for ${newDueDate.toDateString()}`
-        );
-      } else {
-        console.log(
-          `Skipped task ${task._id} due to future nextDate: ${newDueDate}`
-        );
-      }
-    }
+    // Update original task for the next cycle
+    task.nextRepetitionDate = nextDueDate;
+    task.repetitionCount = (task.repetitionCount || 1) + 1;
+    await task.save();
+
+    console.log(
+      `✅ Created new repetition of task ${task._id} for ${newDueDate.toDateString()}`
+    );
+  } else {
+    console.log(
+      `⏭️ Skipped task ${task._id} due to future nextDate: ${newDueDate}`
+    );
+  }
+}
+
   } catch (error) {
     console.error("Error in scheduleTaskRepeats:", error);
   }
