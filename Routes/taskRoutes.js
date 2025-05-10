@@ -5,7 +5,7 @@ const Task = require("../Models/Task");
 const Client = require("../Models/Client");
 const getNextDueDate = require("../utils/getNextDueDate");
 
-// const { userSocketMap } = require("../server");
+
 const axios = require("axios");
 const { sendTaskReminder } = require("../services/taskReminderService");
 
@@ -20,27 +20,27 @@ router.post("/", async (req, res) => {
 
     // const task = new Task(req.body);
     const {
-  taskName,
-  workDesc,
-  taskCategory,
-  department,
-  clientName,
-  code,
-  assignedBy,
-  assignees,
-  assignedDate,
-  dueDate,
-  priority,
-  status,
-  overdueNote,
-  remark,
-  createdBy, // ✅ extracted
-  isRepetitive,
-  repeatType,
-  repeatDay,
-  repeatMonth,
-  nextRepetitionDate
-} = req.body;
+      taskName,
+      workDesc,
+      taskCategory,
+      department,
+      clientName,
+      code,
+      assignedBy,
+      assignees,
+      assignedDate,
+      dueDate,
+      priority,
+      status,
+      overdueNote,
+      remark,
+      createdBy, // ✅ extracted
+      isRepetitive,
+      repeatType,
+      repeatDay,
+      repeatMonth,
+      nextRepetitionDate,
+    } = req.body;
 
 const task = new Task({
   taskName,
@@ -64,45 +64,6 @@ const task = new Task({
   repeatMonth,
   nextRepetitionDate
 });
-
-
-    const now = new Date();
-
-    // Handle repetition setup
-    if (task.isRepetitive) {
-      const nextDate = getNextDueDate(task, 1);
-      task.nextRepetitionDate = nextDate;
-      task.nextDueDate = nextDate; // ✅ NEW LINE
-      task.repetitionCount = 1;
-    }
-
-    // Handle repetition setup
-    // if (task.isRepetitive) {
-    //   const repeatDay = task.repeatDay || now.getDate();
-
-    //   switch (task.repeatType) {
-    //     case "Daily":
-    //       task.nextRepetitionDate = new Date(now.setDate(now.getDate() + 1));
-    //       break;
-    //     case "Monthly":
-    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 1, repeatDay);
-    //       break;
-    //     case "Quarterly":
-    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 3, repeatDay);
-    //       break;
-    //     case "Every 6 Months":
-    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 6, repeatDay);
-    //       break;
-    //     case "Annually":
-    //       const month = task.repeatMonth || now.getMonth() + 1;
-    //       task.nextRepetitionDate = new Date(now.getFullYear() + 1, month - 1, repeatDay);
-    //       break;
-    //   }
-
-    //   task.repetitionCount = 1;
-    // }
-
-    // Save task
 
     const savedTask = await task.save();
 
@@ -144,29 +105,20 @@ const task = new Task({
       }
     }
 
-    // Notify admin
-    const adminNotification = new Notification({
-      message: `A new task "${savedTask.taskName}" was created by ${
-        savedTask.assignedBy?.name || "Unknown"
-      }.`,
-      taskId: savedTask._id,
-      action: "task-created",
-      type: "admin",
-      read: false,
-      createdAt: new Date(),
-      createdBy: savedTask.assignedBy?.name || "unknown",
-      createdByEmail: savedTask.assignedBy?.email || "unknown",
-    });
 
-    await adminNotification.save();
-    await emitUnreadNotificationCount(io, "admin");
-    io.emit("admin-notification", adminNotification);
+    // Emit task to assigned user if socket exists
+    if (userEmail && global.userSocketMap[userEmail]) {
+      console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
+      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
+      console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
+    } else {
+      console.log("No socket found for the user or email not assigned");
+    }
+    
 
-    // Emit to all for frontend updates
     io.emit("new-task-created", savedTask);
-
-    // Schedule reminder
-    await sendTaskReminder(savedTask);
+    console.log("📡 Backend emitted notificationCountUpdated");
+await sendTaskReminder(savedTask); 
 
     let message = "Task created";
     if (savedTask.isRepetitive && savedTask.nextRepetitionDate) {
@@ -210,12 +162,8 @@ router.put("/:id", async (req, res) => {
     taskCategory,
     department,
     clientName,
-    remark, // ✅ this is correct
+    remark,  
     code,
-    isRepetitive,
-    repeatType,
-    repeatDay,
-    repeatMonth,
   } = req.body;
 
   try {
@@ -265,22 +213,6 @@ router.put("/:id", async (req, res) => {
     if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
 
-    if (isRepetitive && repeatType && repeatType !== existingTask.repeatType) {
-      changes.repeatType = `Changed Repeat Type to "${repeatType}"`;
-    }
-
-    if (isRepetitive && repeatDay && repeatDay !== existingTask.repeatDay) {
-      changes.repeatDay = `Changed Repeat Day to "${repeatDay}"`;
-    }
-
-    if (
-      isRepetitive &&
-      repeatType === "Annually" &&
-      repeatMonth &&
-      repeatMonth !== existingTask.repeatMonth
-    ) {
-      changes.repeatMonth = `Changed Repeat Month to "${repeatMonth}"`;
-    }
 
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
@@ -298,10 +230,6 @@ router.put("/:id", async (req, res) => {
         clientName,
         code,
         remark, // Add the remark here
-        isRepetitive,
-        repeatType,
-        repeatDay,
-        repeatMonth,
       },
       { new: true }
     );
