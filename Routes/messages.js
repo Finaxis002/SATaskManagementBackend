@@ -2,7 +2,7 @@ const ChatMessage = require("../Models/ChatMessage");
 const express = require("express");
 const router = express.Router();
 const Employee = require("../Models/Employee");
-const upload = require("../upload")
+const upload = require("../upload");
 const path = require("path");
 
 router.post("/messages/:group", async (req, res) => {
@@ -26,12 +26,28 @@ router.post("/messages/:group", async (req, res) => {
     const savedMessage = await newMessage.save();
     const io = req.app.get("io");
     io.emit("receiveMessage", savedMessage);
-    io.emit("inboxCountUpdated");
-    
-    res.status(201).json(savedMessage);  // Respond with saved message
+    // emit only to sender and recipient for personal messages
+    if (message.recipient && message.sender) {
+      const recipientSocket = getSocketIdByName(message.recipient); // custom method you write
+      const senderSocket = getSocketIdByName(message.sender);
+
+      if (recipientSocket) io.to(recipientSocket).emit("inboxCountUpdated");
+      if (senderSocket) io.to(senderSocket).emit("inboxCountUpdated");
+    } else if (message.group) {
+      // For group messages, notify all group members only (or just admins if needed)
+      const groupUsers = getUsersInGroup(message.group); // must be implemented
+      groupUsers.forEach((user) => {
+        const socketId = getSocketIdByName(user.name);
+        if (socketId) io.to(socketId).emit("inboxCountUpdated");
+      });
+    }
+
+    res.status(201).json(savedMessage); // Respond with saved message
   } catch (err) {
     console.error("❌ Error saving message:", err);
-    res.status(500).json({ message: "Failed to save message", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to save message", error: err.message });
   }
 });
 
@@ -108,7 +124,7 @@ router.put("/mark-read", async (req, res) => {
 
     // 🛠️ After updating, broadcast to all connected clients
     const io = req.app.get("io"); // make sure your socket.io instance is attached
-    io.emit("inboxCountUpdated");  // ✅ Tell frontend to refresh badges
+    io.emit("inboxCountUpdated"); // ✅ Tell frontend to refresh badges
 
     res.status(200).json({ message: "All messages marked as read" });
   } catch (err) {
@@ -116,7 +132,6 @@ router.put("/mark-read", async (req, res) => {
     res.status(500).json({ message: "Failed to mark messages as read" });
   }
 });
-
 
 router.get("/group-unread-counts", async (req, res) => {
   const { name } = req.query;
@@ -131,11 +146,14 @@ router.get("/group-unread-counts", async (req, res) => {
 
     const counts = {};
     unreadMessages.forEach((msg) => {
-      if (msg.group && typeof msg.group === "string" && msg.group.trim() !== "") {
+      if (
+        msg.group &&
+        typeof msg.group === "string" &&
+        msg.group.trim() !== ""
+      ) {
         counts[msg.group] = (counts[msg.group] || 0) + 1;
       }
     });
-    
 
     res.json({ groupUnreadCounts: counts });
   } catch (error) {
@@ -144,30 +162,29 @@ router.get("/group-unread-counts", async (req, res) => {
   }
 });
 
-
 // Add this to your backend routes
 router.get("/user-unread-counts", async (req, res) => {
   const { name } = req.query;
-  
+
   try {
     const results = await ChatMessage.aggregate([
       {
         $match: {
           read: false,
           sender: { $ne: name },
-          group: { $exists: false } // Only individual messages
-        }
+          group: { $exists: false }, // Only individual messages
+        },
       },
       {
         $group: {
           _id: "$sender",
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     const counts = {};
-    results.forEach(item => {
+    results.forEach((item) => {
       counts[item._id] = item.count;
     });
 
@@ -195,7 +212,9 @@ router.put("/mark-read-group", async (req, res) => {
       { $set: { read: true } }
     );
 
-    console.log(`✅ Marked ${result.modifiedCount} messages as read in group ${group}`);
+    console.log(
+      `✅ Marked ${result.modifiedCount} messages as read in group ${group}`
+    );
 
     // 🔁 Emit socket event to update sidebar badges
     req.app.get("io").emit("inboxCountUpdated");
@@ -203,7 +222,9 @@ router.put("/mark-read-group", async (req, res) => {
     return res.json({ success: true, updated: result.modifiedCount });
   } catch (error) {
     console.error("❌ Error marking group messages as read:", error.message);
-    return res.status(500).json({ message: "Failed to mark group messages as read" });
+    return res
+      .status(500)
+      .json({ message: "Failed to mark group messages as read" });
   }
 });
 
@@ -219,11 +240,10 @@ router.get("/group-members/:group", async (req, res) => {
   }
 });
 
-
 // POST API to send a message to a user
 router.post("/messages/user/:username", async (req, res) => {
-  const { username } = req.params;  // Get the recipient username from the URL
-  const { sender, text, timestamp } = req.body;  // Extract message details from the request body
+  const { username } = req.params; // Get the recipient username from the URL
+  const { sender, text, timestamp } = req.body; // Extract message details from the request body
 
   console.log("Received message:", { sender, text, timestamp, username });
 
@@ -238,21 +258,22 @@ router.post("/messages/user/:username", async (req, res) => {
       sender,
       text,
       timestamp,
-      recipient: username,  // Store the recipient username
+      recipient: username, // Store the recipient username
     });
 
     const savedMessage = await newMessage.save();
     const io = req.app.get("io");
     io.emit("receiveMessage", savedMessage);
-    io.emit("inboxCountUpdated");    
+    io.emit("inboxCountUpdated");
 
-    res.status(201).json(savedMessage);  // Respond with the saved message
+    res.status(201).json(savedMessage); // Respond with the saved message
   } catch (err) {
     console.error("❌ Error saving message:", err);
-    res.status(500).json({ message: "Failed to save message", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to save message", error: err.message });
   }
 });
-
 
 router.get("/messages/user/:username", async (req, res) => {
   const { username } = req.params;
@@ -269,8 +290,6 @@ router.get("/messages/user/:username", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-
 
 // ✅ NEW ROUTE to fetch all group members
 router.get("/group-members", async (req, res) => {
@@ -292,7 +311,6 @@ router.get("/group-members", async (req, res) => {
   }
 });
 
-
 // Define the API endpoint to upload files
 router.post("/api/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
@@ -308,6 +326,5 @@ router.post("/api/upload", upload.single("file"), (req, res) => {
 
 // Serve the uploaded files statically
 router.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 
 module.exports = router;
