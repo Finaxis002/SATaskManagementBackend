@@ -5,6 +5,19 @@ const Employee = require("../Models/Employee");
 const upload = require("../upload");
 const path = require("path");
 
+// Function to get users in a specific group
+const getUsersInGroup = async (groupName) => {
+  try {
+    // Find all employees belonging to the given group
+    const usersInGroup = await Employee.find({ department: groupName });
+    return usersInGroup; // Return users found in the group
+  } catch (err) {
+    console.error("❌ Error fetching users in group:", err);
+    return []; // Return an empty array if there's an error
+  }
+};
+
+// Post route for sending messages to a group
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
   const { sender, text, timestamp, recipient } = req.body; // Added recipient to the request body
@@ -32,7 +45,7 @@ router.post("/messages/:group", async (req, res) => {
     // Get the socket.io instance
     const io = req.app.get("io");
 
-    // Emit the saved message to all connected clients
+    // Emit the saved message to all connected clients (for real-time update)
     io.emit("receiveMessage", savedMessage);
 
     // If the message has a recipient (personal message)
@@ -46,8 +59,8 @@ router.post("/messages/:group", async (req, res) => {
     } 
     // If it's a group message
     else if (group) {
-      // Get the users in the group
-      const groupUsers = getUsersInGroup(group); // You must implement this function
+      // Get the users in the group using the getUsersInGroup function
+      const groupUsers = await getUsersInGroup(group); // Get the users in the group
 
       // Emit inbox count update to all users in the group
       groupUsers.forEach((user) => {
