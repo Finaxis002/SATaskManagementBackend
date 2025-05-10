@@ -234,7 +234,7 @@ router.post("/reset-password/admin", async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "shardaassociate.in@gmail.com", // Your Gmail
+        user: "shardaassociates.in@gmail.com", // Your Gmail
         pass: "ullq uygv ynkk rfsi", // Use App Password if 2FA is enabled
       },
     });
@@ -242,7 +242,7 @@ router.post("/reset-password/admin", async (req, res) => {
     // ✅ Compose mail
     const mailOptions = {
       from: '"Sharda Associate" <shardaassociate.in@gmail.com>',
-      to: "priyadiw128@gmail.com",
+      to: "caanunaysharda@gmail.com",
       subject: "Admin Password Reset",
       html: `
     <h1>🔐 Task Management System</h1>
