@@ -211,7 +211,7 @@ router.put("/:id", async (req, res) => {
         clientName,
         code,
         remark, // Add the remark here
-        updatedTask,
+        assignedBy,
       },
       { new: true }
     );
