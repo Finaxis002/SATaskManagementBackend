@@ -4,12 +4,8 @@ const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 
 // const { userSocketMap } = require("../server");
-const axios = require('axios');
-const { sendTaskReminder } = require("../services/taskReminderService"); 
-
-
-
-
+const axios = require("axios");
+const { sendTaskReminder } = require("../services/taskReminderService");
 
 const Notification = require("../Models/Notification");
 const io = require("../socket/socket");
@@ -17,55 +13,55 @@ const {
   emitUnreadNotificationCount,
 } = require("../utils/emitNotificationCount");
 
-
 router.post("/", async (req, res) => {
   try {
     // const task = new Task(req.body);
     const {
-  taskName,
-  workDesc,
-  taskCategory,
-  department,
-  clientName,
-  code,
-  assignedBy,
-  assignees,
-  assignedDate,
-  dueDate,
-  priority,
-  status,
-  overdueNote,
-  remark,
-  createdBy, // ✅ extracted
-  isRepetitive,
-  repeatType,
-  repeatDay,
-  repeatMonth,
-  nextRepetitionDate
-} = req.body;
+      taskName,
+      workDesc,
+      taskCategory,
+      department,
+      clientName,
+      code,
+      assignedBy,
+      assignees,
+      assignedDate,
+      dueDate,
+      priority,
+      status,
+      overdueNote,
+      remark,
+      createdBy, // ✅ extracted
+      isRepetitive,
+      repeatType,
+      repeatDay,
+      repeatMonth,
+      nextRepetitionDate,
+    } = req.body;
 
-const task = new Task({
-  taskName,
-  workDesc,
-  taskCategory,
-  department,
-  clientName,
-  code,
-  assignedBy,
-  assignees,
-  assignedDate,
-  dueDate,
-  priority,
-  status,
-  overdueNote,
-  remark,
-  createdBy, // ✅ now it will be stored
-  isRepetitive,
-  repeatType,
-  repeatDay,
-  repeatMonth,
-  nextRepetitionDate
-});
+    const task = new Task({
+      taskName,
+      workDesc,
+      taskCategory,
+      department,
+      clientName,
+      code,
+      assignedBy,
+      assignees,
+      assignedDate,
+      dueDate,
+      priority,
+      status,
+      overdueNote,
+      remark,
+      createdBy, // ✅ now it will be stored
+      isRepetitive,
+      repeatType,
+      repeatDay,
+      repeatMonth,
+      nextRepetitionDate,
+      assignedBy,
+    });
 
     const savedTask = await task.save();
 
@@ -93,20 +89,18 @@ const task = new Task({
       }
     }
 
-
     // Emit task to assigned user if socket exists
     if (userEmail && global.userSocketMap[userEmail]) {
-      console.log(`Sending task to user: ${userEmail}`);  // Log before emitting
-      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask);  // Emit task to assigned user
+      console.log(`Sending task to user: ${userEmail}`); // Log before emitting
+      io.to(global.userSocketMap[userEmail]).emit("new-task", savedTask); // Emit task to assigned user
       console.log(`📨 Sent task "${savedTask.name}" to ${userEmail}`);
     } else {
       console.log("No socket found for the user or email not assigned");
     }
-    
 
     io.emit("new-task-created", savedTask);
     console.log("📡 Backend emitted notificationCountUpdated");
-await sendTaskReminder(savedTask); 
+    await sendTaskReminder(savedTask);
 
     res.status(201).json({ message: "Task created", task: savedTask });
   } catch (error) {
@@ -140,8 +134,9 @@ router.put("/:id", async (req, res) => {
     taskCategory,
     department,
     clientName,
-    remark,  
+    remark,
     code,
+    assignedBy,
   } = req.body;
 
   try {
@@ -150,7 +145,6 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-  
     // Detect changes
     const changes = {};
     if (taskName && taskName !== existingTask.taskName)
@@ -188,10 +182,17 @@ router.put("/:id", async (req, res) => {
     if (code && code !== existingTask.code)
       changes.code = `Changed task code to "${code}"`;
 
-     // Detect and update the remark
-     if (remark && remark !== existingTask.remark)
+    // Detect and update the remark
+    if (remark && remark !== existingTask.remark)
       changes.remark = `Added Remark :  "${remark}"`; // Log the change in remarks
 
+    if (
+      assignedBy &&
+      (assignedBy.email !== existingTask.assignedBy?.email ||
+        assignedBy.name !== existingTask.assignedBy?.name)
+    ) {
+      changes.assignedBy = `Changed assigned by to "${assignedBy.name}"`;
+    }
 
     // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
@@ -209,6 +210,7 @@ router.put("/:id", async (req, res) => {
         clientName,
         code,
         remark, // Add the remark here
+        updatedTask,
       },
       { new: true }
     );
@@ -222,11 +224,10 @@ router.put("/:id", async (req, res) => {
         console.log(`⏭️ Skipping notification for updater: ${assignee.email}`);
         continue;
       }
-    
+
       const email = assignee.email;
       const name = assignee.name;
-    
- 
+
       const notification = new Notification({
         recipientEmail: email,
         message: `Task "${updatedTask.taskName}" has been updated.`,
@@ -237,14 +238,13 @@ router.put("/:id", async (req, res) => {
         details: changes,
         read: false,
       });
-    
+
       await notification.save();
-    
+
       // ✅ Emit count update only to this user
       await emitUnreadNotificationCount(io, email);
       console.log(`📢 User notification sent and count emitted for: ${email}`);
     }
-    
 
     // 🔔 2. Notify all admins (no email, just role)
     const adminNotification = new Notification({
@@ -289,7 +289,4 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-
-
 module.exports = router;
-
