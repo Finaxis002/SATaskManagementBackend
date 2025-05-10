@@ -96,26 +96,26 @@ router.get("/messages/:group", async (req, res) => {
 });
 
 // ✅ GET unread message count for a user
-router.get("/unread-count", async (req, res) => {
-  const { name, role } = req.query;
+// router.get("/unread-count", async (req, res) => {
+//   const { name, role } = req.query;
 
-  if (!name || !role) {
-    return res.status(400).json({ message: "Name and role are required" });
-  }
+//   if (!name || !role) {
+//     return res.status(400).json({ message: "Name and role are required" });
+//   }
 
-  try {
-    // Count unread messages NOT sent by current user
-    const unreadMessages = await ChatMessage.find({
-      read: false,
-      sender: { $ne: name }, // Don't count messages sent by user themselves
-    });
+//   try {
+//     // Count unread messages NOT sent by current user
+//     const unreadMessages = await ChatMessage.find({
+//       read: false,
+//       sender: { $ne: name }, // Don't count messages sent by user themselves
+//     });
 
-    res.json({ unreadCount: unreadMessages.length }); // ✅ Just total unread messages
-  } catch (err) {
-    console.error("❌ Error fetching unread count:", err.message);
-    res.status(500).json({ message: "Failed to fetch unread count" });
-  }
-});
+//     res.json({ unreadCount: unreadMessages.length }); // ✅ Just total unread messages
+//   } catch (err) {
+//     console.error("❌ Error fetching unread count:", err.message);
+//     res.status(500).json({ message: "Failed to fetch unread count" });
+//   }
+// });
 
 // PUT route to mark all messages as read
 router.put("/mark-read", async (req, res) => {
@@ -133,68 +133,70 @@ router.put("/mark-read", async (req, res) => {
   }
 });
 
-router.get("/group-unread-counts", async (req, res) => {
-  const { name } = req.query;
+// router.get("/group-unread-counts", async (req, res) => {
+//   const { name } = req.query;
 
-  if (!name) return res.status(400).json({ message: "Name is required" });
+//   if (!name) return res.status(400).json({ message: "Name is required" });
 
-  try {
-    const unreadMessages = await ChatMessage.find({
-      read: false,
-      sender: { $ne: name },
-    });
+//   try {
+//     const unreadMessages = await ChatMessage.find({
+//       read: false,
+//       sender: { $ne: name },
+//     });
 
-    const counts = {};
-    unreadMessages.forEach((msg) => {
-      if (
-        msg.group &&
-        typeof msg.group === "string" &&
-        msg.group.trim() !== ""
-      ) {
-        counts[msg.group] = (counts[msg.group] || 0) + 1;
-      }
-    });
+//     const counts = {};
+//     unreadMessages.forEach((msg) => {
+//       if (
+//         msg.group &&
+//         typeof msg.group === "string" &&
+//         msg.group.trim() !== ""
+//       ) {
+//         counts[msg.group] = (counts[msg.group] || 0) + 1;
+//       }
+//     });
 
-    res.json({ groupUnreadCounts: counts });
-  } catch (error) {
-    console.error("❌ Error fetching group counts:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+//     res.json({ groupUnreadCounts: counts });
+//   } catch (error) {
+//     console.error("❌ Error fetching group counts:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
 
 // Add this to your backend routes
-router.get("/user-unread-counts", async (req, res) => {
-  const { name } = req.query;
+// router.get("/user-unread-counts", async (req, res) => {
+//   const { name } = req.query;
 
-  try {
-    const results = await ChatMessage.aggregate([
-      {
-        $match: {
-          read: false,
-          sender: { $ne: name },
-          group: { $exists: false }, // Only individual messages
-        },
-      },
-      {
-        $group: {
-          _id: "$sender",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+//   try {
+//     const results = await ChatMessage.aggregate([
+//       {
+//         $match: {
+//           read: false,
+//           sender: { $ne: name },
+//           group: { $exists: false }, // Only individual messages
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$sender",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
 
-    const counts = {};
-    results.forEach((item) => {
-      counts[item._id] = item.count;
-    });
+//     const counts = {};
+//     results.forEach((item) => {
+//       counts[item._id] = item.count;
+//     });
 
-    res.json({ userUnreadCounts: counts });
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-});
+//     res.json({ userUnreadCounts: counts });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
 
 // PUT /api/mark-read-group
+
+
 router.put("/mark-read-group", async (req, res) => {
   const { name, group } = req.body;
 
@@ -322,6 +324,108 @@ router.post("/api/upload", upload.single("file"), (req, res) => {
 
   // Send back the file URL as response
   res.status(200).send({ fileUrl });
+});
+
+
+// Updated /unread-count endpoint
+router.get("/unread-count", async (req, res) => {
+  const { name } = req.query;
+
+  try {
+    // Get user's groups first
+    const user = await Employee.findOne({ name });
+    const userGroups = user?.department || [];
+
+    // Count direct messages to this user
+    const directCount = await ChatMessage.countDocuments({
+      recipient: name,
+      read: false,
+      sender: { $ne: name }
+    });
+
+    // Count group messages in user's groups
+    const groupCount = await ChatMessage.countDocuments({
+      group: { $in: userGroups },
+      read: false,
+      sender: { $ne: name }
+    });
+
+    res.json({ 
+      unreadCount: directCount + groupCount 
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Updated /group-unread-counts endpoint
+router.get("/group-unread-counts", async (req, res) => {
+  const { name } = req.query;
+
+  try {
+    // Get user's groups first
+    const user = await Employee.findOne({ name });
+    const userGroups = user?.department || [];
+
+    // Aggregate counts only for user's groups
+    const results = await ChatMessage.aggregate([
+      {
+        $match: {
+          group: { $in: userGroups },
+          read: false,
+          sender: { $ne: name }
+        }
+      },
+      {
+        $group: {
+          _id: "$group",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = {};
+    results.forEach(item => {
+      counts[item._id] = item.count;
+    });
+
+    res.json({ groupUnreadCounts: counts });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Updated /user-unread-counts endpoint
+router.get("/user-unread-counts", async (req, res) => {
+  const { name } = req.query;
+
+  try {
+    const results = await ChatMessage.aggregate([
+      {
+        $match: {
+          recipient: name, // Only messages sent to this user
+          read: false,
+          sender: { $ne: name }, // Not their own messages
+          group: { $exists: false } // Only direct messages
+        }
+      },
+      {
+        $group: {
+          _id: "$sender",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = {};
+    results.forEach(item => {
+      counts[item._id] = item.count;
+    });
+
+    res.json({ userUnreadCounts: counts });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 // Serve the uploaded files statically
