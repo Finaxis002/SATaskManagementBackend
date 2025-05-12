@@ -34,8 +34,8 @@ const TaskSchema = new mongoose.Schema({
     email: { type: String, required: true },
   },
   createdBy: {
-    name: { type: String, required: true },
-    email: { type: String, required: true },
+    name: { type: String , required: true},
+    email: { type: String , required: true},
   },
 
   assignees: [
@@ -64,7 +64,7 @@ const TaskSchema = new mongoose.Schema({
   status: {
     type: String,
 
-    enum: ["To Do", "In Progress", "Completed", "Overdue" , "Obsolete"],
+    enum: ["To Do", "In Progress", "Completed", "Overdue", "Obsolete"],
 
     default: "To Do",
   },
@@ -85,6 +85,49 @@ const TaskSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+
+   isRepetitive: {
+    type: Boolean,
+    default: false,
+  },
+
+  repeatType: {
+    type: String,
+    enum: ["Daily", "Monthly", "Quarterly", "Every 6 Months", "Annually"],
+  },
+
+  repeatDay: {
+    type: Number,
+    required: function () {
+      return (
+        this.isRepetitive &&
+        ["Monthly", "Quarterly", "Every 6 Months", "Annually"].includes(
+          this.repeatType
+        )
+      );
+    },
+  },
+
+  repeatMonth: {
+    type: Number,
+    required: function () {
+      return this.isRepetitive && this.repeatType === "Annually";
+    },
+  },
+
+  repetitionCount: {
+    type: Number,
+    default: 1,
+  },
+
+  nextRepetitionDate: {
+    type: Date,
+    required: false,
+  },
+  nextDueDate: {
+    type: Date,
+    required: false,
   },
 });
 
