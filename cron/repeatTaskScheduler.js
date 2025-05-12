@@ -5,12 +5,13 @@ const getNextDueDate = require("../utils/getNextDueDate");
 const scheduleTaskRepeats = async () => {
   try {
     const now = new Date();
+    const today = new Date(now.setHours(0, 0, 0, 0));
 
     // Find all repetitive tasks that need their next occurrence created
     const tasks = await Task.find({
       isRepetitive: true,
       $or: [
-        { nextRepetitionDate: { $lte: now } },
+        { nextRepetitionDate: { $lte: today } },
         { nextRepetitionDate: { $exists: false } },
       ],
     });
@@ -21,73 +22,56 @@ const scheduleTaskRepeats = async () => {
       } repetitive tasks to process.`
     );
 
-   for (const task of tasks) {
-  // Always base next repetitions from last known due date or nextRepetitionDate
-  const baseDate = task.nextRepetitionDate || task.dueDate;
+    for (const task of tasks) {
+      // Calculate dates based on repeatType
+      const newRepetitionDate = task.nextRepetitionDate 
+        ? getNextDueDate(task, 0, task.nextRepetitionDate)
+        : getNextDueDate(task, 0, task.createdAt);
+      
+      const newDueDate = getNextDueDate(task, 0);
 
-  const newDueDate = getNextDueDate({ ...task.toObject(), dueDate: baseDate }, 0); // current repetition
-  const nextDueDate = getNextDueDate({ ...task.toObject(), dueDate: baseDate }, 1); // future repetition
+      // Only create new task if we've reached the repetition date
+      if (!task.nextRepetitionDate || task.nextRepetitionDate <= today) {
+        const newTaskData = task.toObject();
+        delete newTaskData._id;
+        delete newTaskData.__v;
 
-  if (newDueDate.setHours(0, 0, 0, 0) >= now.setHours(0, 0, 0, 0)) {
-    const newTaskData = task.toObject();
-    delete newTaskData._id;
-    delete newTaskData.__v;
+        const newTask = new Task({
+          ...newTaskData,
+          assignedDate: new Date(today), // Use today's date as assigned date
+          createdAt: new Date(today),
+          dueDate: newDueDate,
+          nextRepetitionDate: newRepetitionDate,
+          nextDueDate: getNextDueDate(task, 0, newDueDate),
+          status: "To Do",
+          repetitionCount: (task.repetitionCount || 0) + 1,
+        });
 
-    const newTask = new Task({
-      ...newTaskData,
-      assignedDate: now,
-      createdAt: now,
-      dueDate: newDueDate,
-      nextDueDate: nextDueDate,
-      nextRepetitionDate: nextDueDate,
-      status: "To Do",
-      repetitionCount: (task.repetitionCount || 1) + 1,
-    });
+        await newTask.save();
 
-    await newTask.save();
+        // Update original task's nextRepetitionDate and nextDueDate
+        task.nextRepetitionDate = newRepetitionDate;
+        task.nextDueDate = newDueDate;
+        task.repetitionCount = (task.repetitionCount || 0) + 1;
+        await task.save();
 
-    // Update original task for the next cycle
-    task.nextRepetitionDate = nextDueDate;
-    task.repetitionCount = (task.repetitionCount || 1) + 1;
-    await task.save();
-
-    console.log(
-      `✅ Created new repetition of task ${task._id} for ${newDueDate.toDateString()}`
-    );
-  } else {
-    console.log(
-      `⏭️ Skipped task ${task._id} due to future nextDate: ${newDueDate}`
-    );
-  }
-}
-
+        console.log(
+          `✅ Created new task from ${
+            task._id
+          } with due date ${newDueDate.toDateString()}`
+        );
+      } else {
+        console.log(
+          `⏭️ Skipped: ${task._id} – next repetition date ${task.nextRepetitionDate.toDateString()} not reached yet`
+        );
+      }
+    }
   } catch (error) {
     console.error("Error in scheduleTaskRepeats:", error);
   }
 };
 
-// function getNextDueDate(task, offset = 1) {
-//   const current = new Date(task.dueDate);
-//   const day = task.repeatDay || current.getDate();
-
-//   switch (task.repeatType) {
-//     case "Daily":
-//       return new Date(current.getFullYear(), current.getMonth(), current.getDate() + offset);
-//     case "Monthly":
-//       return new Date(current.getFullYear(), current.getMonth() + offset, day);
-//     case "Quarterly":
-//       return new Date(current.getFullYear(), current.getMonth() + offset * 3, day);
-//     case "Every 6 Months":
-//       return new Date(current.getFullYear(), current.getMonth() + offset * 6, day);
-//     case "Annually":
-//       const month = task.repeatMonth || current.getMonth();
-//       return new Date(current.getFullYear() + offset, month, day);
-//     default:
-//       return current;
-//   }
-// }
-
-// ⏰ Run daily at 11:00 AM (server time)
-cron.schedule("0 9 * * *", scheduleTaskRepeats); // 9:00 AM server time
+// Run daily at midnight
+cron.schedule("0 0 * * *", scheduleTaskRepeats);
 
 module.exports = scheduleTaskRepeats;
