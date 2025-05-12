@@ -355,35 +355,73 @@ router.post("/api/upload", upload.single("file"), (req, res) => {
 
 
 // Updated /unread-count endpoint
+// router.get("/unread-count", async (req, res) => {
+//   const { name } = req.query;
+
+//   try {
+//     // Get user's groups first
+//     const user = await Employee.findOne({ name });
+//     const userGroups = user?.department || [];
+
+//     // Count direct messages to this user
+//     const directCount = await ChatMessage.countDocuments({
+//       recipient: name,
+//       read: false,
+//       sender: { $ne: name }
+//     });
+
+//     // Count group messages in user's groups
+//     const groupCount = await ChatMessage.countDocuments({
+//       group: { $in: userGroups },
+//       read: false,
+//       sender: { $ne: name }
+//     });
+
+//     res.json({ 
+//       unreadCount: directCount + groupCount 
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
 router.get("/unread-count", async (req, res) => {
-  const { name } = req.query;
+  const { name, role } = req.query;
 
   try {
-    // Get user's groups first
-    const user = await Employee.findOne({ name });
-    const userGroups = user?.department || [];
+    let count = 0;
 
-    // Count direct messages to this user
-    const directCount = await ChatMessage.countDocuments({
+    // Direct unread messages
+    const directUnread = await ChatMessage.countDocuments({
       recipient: name,
       read: false,
-      sender: { $ne: name }
+      sender: { $ne: name },
     });
 
-    // Count group messages in user's groups
-    const groupCount = await ChatMessage.countDocuments({
-      group: { $in: userGroups },
-      read: false,
-      sender: { $ne: name }
-    });
+    count += directUnread;
 
-    res.json({ 
-      unreadCount: directCount + groupCount 
-    });
+    // For admins or users in groups
+    if (role === "admin" || role === "user") {
+      const user = await Employee.findOne({ name });
+      const userGroups = user?.department || [];
+
+      const groupUnread = await ChatMessage.countDocuments({
+        group: { $in: userGroups },
+        read: false,
+        sender: { $ne: name },
+      });
+
+      count += groupUnread;
+    }
+
+    res.json({ unreadCount: count });
   } catch (err) {
+    console.error("❌ Failed fetching unread count:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Updated /group-unread-counts endpoint
 router.get("/group-unread-counts", async (req, res) => {
