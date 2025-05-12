@@ -39,7 +39,7 @@ router.post("/", async (req, res) => {
       nextRepetitionDate,
     } = req.body;
 
-     const userEmail = assignedBy?.email || createdBy?.email || null;
+    const userEmail = assignedBy?.email || createdBy?.email || null;
     const task = new Task({
       taskName,
       workDesc,
@@ -138,6 +138,11 @@ router.put("/:id", async (req, res) => {
     remark,
     code,
     assignedBy,
+    isRepetitive, // ✅ missing earlier
+    repeatType, // ✅
+    repeatDay, // ✅
+    repeatMonth, // ✅
+    nextRepetitionDate, // ✅
   } = req.body;
 
   try {
@@ -210,8 +215,13 @@ router.put("/:id", async (req, res) => {
         department,
         clientName,
         code,
-        remark, // Add the remark here
+        remark,
         assignedBy,
+        isRepetitive,
+        repeatType,
+        repeatDay,
+        repeatMonth,
+        nextRepetitionDate,
       },
       { new: true }
     );
