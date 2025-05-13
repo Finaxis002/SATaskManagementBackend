@@ -1,0 +1,13 @@
+const mongoose = require("mongoose");
+
+const LeaveSchema = new mongoose.Schema({
+  userId: { type: String, required: true }, // Add this field
+  fromDate: { type: Date, required: true },
+  toDate: { type: Date, required: true },
+  leaveType: { type: String, required: true },
+  comments: { type: String },
+  status: { type: String, default: "Pending" },
+  createdAt: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model("Leave", LeaveSchema);

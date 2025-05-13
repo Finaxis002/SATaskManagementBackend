@@ -16,7 +16,7 @@ dotenv.config(); // Load .env
 const scheduleTaskRepeats = require("./cron/repeatTaskScheduler");
 const MainAdmin = require("./Models/mainAdminCredentials");
 const bcrypt = require("bcryptjs");
-
+const leaveRoutes = require("./Routes/leave")
 
 
 scheduleTaskRepeats(); // Initialize the cron job
@@ -52,6 +52,7 @@ app.use("/api", messageRoute);
 app.use("/api/departments", departmentRoutes);
 app.use('/api/task-codes', taskCodeRoutes);
 app.use("/api/clients", clientRoutes);
+app.use("/api/leave", leaveRoutes); 
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
@@ -68,6 +69,9 @@ app.set("userSocketMap", userSocketMap);
 const taskReminderService = require('./services/taskReminderService');
 // taskReminderService.init(io); 
 taskReminderService.init(io, userSocketMap); 
+
+const leaveNotificationService = require('./services/leaveNotificationService');
+leaveNotificationService.init(io, userSocketMap);
 
 // Routes
 app.get("/", (req, res) => {
