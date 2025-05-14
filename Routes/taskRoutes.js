@@ -22,13 +22,17 @@ router.post("/", async (req, res) => {
 
     // Handle repetition setup
     if (task.isRepetitive) {
-      const now = new Date();
+      // Get current date in IST midnight (00:00)
+      const istNow = new Date();
+      istNow.setHours(0, 0, 0, 0);
+
       task.nextRepetitionDate = getNextRepetitionDate(
-        now,
+        istNow, // ⬅️ base date now starts at 00:00 IST
         task.repeatType,
         task.repeatDay,
         task.repeatMonth
       );
+
       task.nextDueDate = getNextDueDate(
         task.dueDate,
         task.repeatType,
