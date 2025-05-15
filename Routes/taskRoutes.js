@@ -15,6 +15,40 @@ const {
   emitUnreadNotificationCount,
 } = require("../utils/emitNotificationCount");
 
+router.put("/hide-completed", async (req, res) => {
+  try {
+    console.log("Attempting to hide completed tasks...");
+    const filter = {
+      status: "Completed",
+      $or: [{ isHidden: false }, { isHidden: { $exists: false } }],
+    };
+    const update = { $set: { isHidden: true } };
+    
+    console.log("Filter:", filter);
+    
+    const result = await Task.updateMany(filter, update);
+    console.log("Update result:", result);
+    
+    const hiddenCount = await Task.countDocuments({ 
+      status: "Completed", 
+      isHidden: true 
+    });
+    console.log(`Now ${hiddenCount} tasks are hidden`);
+    
+    const io = req.app.get("io");
+    io.emit("task-updated", { message: "Completed tasks hidden" });
+    
+    res.status(200).json({ 
+      message: "Completed tasks hidden successfully",
+      hiddenCount
+    });
+  } catch (err) {
+    console.error("Failed to hide completed tasks:", err);
+    res.status(500).json({ message: "Failed to hide completed tasks" });
+  }
+});
+
+
 router.post("/", async (req, res) => {
   try {
     const task = new Task(req.body);

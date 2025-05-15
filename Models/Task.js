@@ -129,6 +129,7 @@ const TaskSchema = new mongoose.Schema({
     type: Date,
     required: false,
   },
+   isHidden: { type: Boolean, default: false },
 });
 
 const Task = mongoose.models.Task || mongoose.model("Task", TaskSchema);
