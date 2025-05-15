@@ -30,14 +30,15 @@ router.get("/", async (req, res) => {
 // POST /api/clients - Create a new client
 router.post("/", async (req, res) => {
   try {
-    const { name,
+    const { 
+      name,
       contactPerson,
       businessName,
       address,
       mobile,
       emailId,
-      GSTIN,
-      taskId } = req.body;
+      GSTIN
+       } = req.body;
 
     if (!name || name.trim() === "") {
       return res.status(400).json({ message: "Client name is required." });
@@ -53,10 +54,7 @@ router.post("/", async (req, res) => {
       GSTIN,
     };
 
-    // Include taskId only if provided
-    if (taskId) {
-      clientData.taskId = taskId;
-    }
+   
 
     const newClient = new Client(clientData);
     await newClient.save();
