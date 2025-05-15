@@ -10,7 +10,6 @@ const clientSchema = new mongoose.Schema({
   mobile: { type: String },
   emailId: { type: String },
   GSTIN: { type: String },
-  taskId: { type: mongoose.Schema.Types.ObjectId, ref: "Task", required: false, unique: true }, // ✅ Make this optional
   createdAt: { type: Date, default: Date.now },
 });
 
