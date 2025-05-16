@@ -14,6 +14,17 @@ const Client = require("../Models/Client");
 //     res.status(500).json({ message: "Failed to fetch clients", error });
 //   }
 // });
+router.get("/details", async (req, res) => {
+  try {
+    const clients = await Client.find({}).sort({ name: 1 }); // fetch all fields
+    res.json(clients);
+  } catch (error) {
+    console.error("Error fetching clients with full details:", error);
+    res.status(500).json({ message: "Failed to fetch clients", error });
+  }
+});
+
+
 // GET /api/clients - Get selected client details
 router.get("/", async (req, res) => {
   try {
