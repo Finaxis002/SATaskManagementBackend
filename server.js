@@ -36,7 +36,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // for local development
-      "https://task-management-software-phi.vercel.app",
+      // "https://task-management-software-phi.vercel.app",
       "https://sataskmanagement.onrender.com" // for production
     ],
     credentials: true, // Allow cookies to be sent with the request

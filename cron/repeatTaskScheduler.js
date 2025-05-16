@@ -93,7 +93,7 @@ const Task = require("../Models/Task");
 const {
   getNextDueDate,
   getNextRepetitionDate,
-} = require("../utils/getNextDueDate");
+} = require("../utils/dateUtils");
 
 const scheduleTaskRepeats = async () => {
   try {
