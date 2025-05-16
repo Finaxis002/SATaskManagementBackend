@@ -23,31 +23,30 @@ router.put("/hide-completed", async (req, res) => {
       $or: [{ isHidden: false }, { isHidden: { $exists: false } }],
     };
     const update = { $set: { isHidden: true } };
-    
+
     console.log("Filter:", filter);
-    
+
     const result = await Task.updateMany(filter, update);
     console.log("Update result:", result);
-    
-    const hiddenCount = await Task.countDocuments({ 
-      status: "Completed", 
-      isHidden: true 
+
+    const hiddenCount = await Task.countDocuments({
+      status: "Completed",
+      isHidden: true,
     });
     console.log(`Now ${hiddenCount} tasks are hidden`);
-    
+
     const io = req.app.get("io");
     io.emit("task-updated", { message: "Completed tasks hidden" });
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "Completed tasks hidden successfully",
-      hiddenCount
+      hiddenCount,
     });
   } catch (err) {
     console.error("Failed to hide completed tasks:", err);
     res.status(500).json({ message: "Failed to hide completed tasks" });
   }
 });
-
 
 router.post("/", async (req, res) => {
   try {
@@ -76,31 +75,7 @@ router.post("/", async (req, res) => {
       task.repetitionCount = 1;
     }
 
-    // Handle repetition setup
-    // if (task.isRepetitive) {
-    //   const repeatDay = task.repeatDay || now.getDate();
-
-    //   switch (task.repeatType) {
-    //     case "Daily":
-    //       task.nextRepetitionDate = new Date(now.setDate(now.getDate() + 1));
-    //       break;
-    //     case "Monthly":
-    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 1, repeatDay);
-    //       break;
-    //     case "Quarterly":
-    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 3, repeatDay);
-    //       break;
-    //     case "Every 6 Months":
-    //       task.nextRepetitionDate = new Date(now.getFullYear(), now.getMonth() + 6, repeatDay);
-    //       break;
-    //     case "Annually":
-    //       const month = task.repeatMonth || now.getMonth() + 1;
-    //       task.nextRepetitionDate = new Date(now.getFullYear() + 1, month - 1, repeatDay);
-    //       break;
-    //   }
-
-    //   task.repetitionCount = 1;
-    // }
+  
 
     // Save task
     const savedTask = await task.save();
@@ -127,9 +102,15 @@ router.post("/", async (req, res) => {
     // Notify assignees
     if (Array.isArray(savedTask.assignees)) {
       for (const assignee of savedTask.assignees) {
+        const notificationMessage = savedTask.isRepetitive
+          ? `You have been assigned a new *repetitive task*: ${
+              savedTask.taskName
+            }. It will repeat ${savedTask.repeatType.toLowerCase()}.`
+          : `You have been assigned a new task: ${savedTask.taskName}`;
+
         const notification = new Notification({
           recipientEmail: assignee.email,
-          message: `You have been assigned a new task: ${savedTask.taskName}`,
+          message: notificationMessage,
           taskId: savedTask._id,
           action: "task-created",
           type: "user",
@@ -156,6 +137,20 @@ router.post("/", async (req, res) => {
       createdBy: savedTask.assignedBy?.name || "unknown",
       createdByEmail: savedTask.assignedBy?.email || "unknown",
     });
+
+    if (savedTask.isRepetitive) {
+      const repetitiveAdminNote = new Notification({
+        message: `Repetitive task "${savedTask.taskName}" (Type: ${savedTask.repeatType}) created by ${savedTask.assignedBy?.name}.`,
+        taskId: savedTask._id,
+        action: "repetitive-task-created",
+        type: "admin",
+        read: false,
+        createdAt: new Date(),
+      });
+
+      await repetitiveAdminNote.save();
+      io.emit("admin-notification", repetitiveAdminNote);
+    }
 
     await adminNotification.save();
     await emitUnreadNotificationCount(io, "admin");
