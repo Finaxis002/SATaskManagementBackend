@@ -107,63 +107,68 @@ const scheduleTaskRepeats = async () => {
 
     console.log(`[${now.toISOString()}] Found ${tasks.length} repetitive tasks to process.`);
 
-    for (const task of tasks) {
-      // Use nextRepetitionDate as the base, fallback to createdAt
-      const lastRepetitionDate = task.nextRepetitionDate || task.createdAt;
-      const lastDueDate = task.dueDate;
+   for (const task of tasks) {
+  const lastAssignedDate = task.nextRepetitionDate || task.createdAt;
+  const lastDueDate = task.dueDate;
 
-      const newRepetitionDate = getNextRepetitionDate(
-        lastRepetitionDate,
-        task.repeatType,
-        task.repeatDay,
-        task.repeatMonth
-      );
+  if (!task.nextRepetitionDate || task.nextRepetitionDate <= today) {
+    // Calculate new repetition dates (only +1 step forward)
+    const newAssignedDate = getNextRepetitionDate(
+      lastAssignedDate,
+      task.repeatType,
+      task.repeatDay,
+      task.repeatMonth
+    );
 
-      const newDueDate = getNextDueDate(
-        lastDueDate,
-        task.repeatType
-      );
+    const newDueDate = getNextDueDate(
+      lastDueDate,
+      task.repeatType
+    );
 
-      const nextRepetitionDate = getNextRepetitionDate(
-        newRepetitionDate,
-        task.repeatType,
-        task.repeatDay,
-        task.repeatMonth
-      );
+    const nextRepetitionDate = getNextRepetitionDate(
+      newAssignedDate,
+      task.repeatType,
+      task.repeatDay,
+      task.repeatMonth
+    );
 
-      const nextDueDate = getNextDueDate(newDueDate, task.repeatType);
+    const nextDueDate = getNextDueDate(
+      newDueDate,
+      task.repeatType
+    );
 
-      if (!task.nextRepetitionDate || task.nextRepetitionDate <= today) {
-        const newTaskData = task.toObject();
-        delete newTaskData._id;
-        delete newTaskData.__v;
+    const newTaskData = task.toObject();
+    delete newTaskData._id;
+    delete newTaskData.__v;
 
-        const newTask = new Task({
-          ...newTaskData,
-          assignedDate: today,
-          createdAt: today,
-          dueDate: newDueDate,
-          nextRepetitionDate,
-          nextDueDate,
-          repetitionCount: (task.repetitionCount || 0) + 1,
-          status: "To Do",
-        });
+    const newTask = new Task({
+      ...newTaskData,
+      assignedDate: newAssignedDate,
+      createdAt: newAssignedDate,
+      dueDate: newDueDate,
+      nextRepetitionDate,
+      nextDueDate,
+      repetitionCount: (task.repetitionCount || 0) + 1,
+      status: "To Do",
+      isHidden: false, // Optional: explicitly show it
+    });
 
-        await newTask.save();
+    await newTask.save();
 
-        // Update current task for next schedule
-        task.nextRepetitionDate = nextRepetitionDate;
-        task.nextDueDate = nextDueDate;
-        task.repetitionCount = newTask.repetitionCount;
-        await task.save();
+    // Update original task for the next repetition cycle
+    task.nextRepetitionDate = nextRepetitionDate;
+    task.nextDueDate = nextDueDate;
+    task.repetitionCount = newTask.repetitionCount;
+    await task.save();
 
-        console.log(`✅ Created new task from ${task._id} due on ${newDueDate.toDateString()}`);
-      } else {
-        console.log(
-          `⏭️ Skipped: ${task._id} – next repetition date ${task.nextRepetitionDate.toDateString()} not reached yet`
-        );
-      }
-    }
+    console.log(`✅ Created new task from ${task._id} on ${newAssignedDate.toDateString()}`);
+  } else {
+    console.log(
+      `⏭️ Skipped: ${task._id} – next repetition date ${task.nextRepetitionDate.toDateString()} not reached yet`
+    );
+  }
+}
+
   } catch (error) {
     console.error("Error in scheduleTaskRepeats:", error);
   }
