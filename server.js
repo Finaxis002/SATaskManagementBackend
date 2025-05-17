@@ -17,6 +17,7 @@ const scheduleTaskRepeats = require("./cron/repeatTaskScheduler");
 const MainAdmin = require("./Models/mainAdminCredentials");
 const bcrypt = require("bcryptjs");
 const leaveRoutes = require("./Routes/leave")
+const invoiceRoutes = require('./Routes/invoice')
 
 
 scheduleTaskRepeats(); // Initialize the cron job
@@ -53,6 +54,7 @@ app.use("/api/departments", departmentRoutes);
 app.use('/api/task-codes', taskCodeRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/leave", leaveRoutes); 
+app.use('/api/invoices', invoiceRoutes);
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
