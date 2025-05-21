@@ -411,4 +411,21 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// GET /api/tasks/by-client-name/:clientName - fetch tasks by client name
+router.get("/by-client-name/:clientName", async (req, res) => {
+  try {
+    const clientName = decodeURIComponent(req.params.clientName);
+
+    // Case-insensitive exact match for safety
+    const tasks = await Task.find({
+      clientName: { $regex: `^${clientName}$`, $options: "i" }
+    });
+
+    res.json(tasks);
+  } catch (error) {
+    console.error("❌ Failed to fetch tasks by client name", error);
+    res.status(500).json({ error: "Failed to fetch tasks by client name" });
+  }
+});
+
 module.exports = router;
