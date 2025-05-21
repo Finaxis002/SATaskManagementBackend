@@ -7,9 +7,7 @@ const Invoice = require('../Models/Invoice');
 router.post('/', async (req, res) => {
   try {
     const invoiceData = req.body;
-    
-    // You can add validation here if needed
-    
+  
     // Upsert invoice by invoiceNumber (overwrite if exists)
     const invoice = await Invoice.findOneAndUpdate(
       { invoiceNumber: invoiceData.invoiceNumber },
@@ -37,6 +35,24 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch invoices' });
+  }
+});
+
+
+// DELETE /api/invoices/:invoiceNumber - delete an invoice
+router.delete('/:invoiceNumber', async (req, res) => {
+  try {
+    const { invoiceNumber } = req.params;
+    const deleted = await Invoice.findOneAndDelete({ invoiceNumber });
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    res.json({ message: 'Invoice deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete invoice' });
   }
 });
 
