@@ -65,8 +65,6 @@ router.post("/", async (req, res) => {
       GSTIN,
     };
 
-   
-
     const newClient = new Client(clientData);
     await newClient.save();
 
@@ -78,7 +76,44 @@ router.post("/", async (req, res) => {
 });
 
 
+// PUT /api/clients - Update client by name (or better: by _id ideally)
+router.put("/", async (req, res) => {
+  try {
+    const { id, name, contactPerson, businessName, address, mobile, emailId, GSTIN } = req.body;
 
+    if (!id) {
+      return res.status(400).json({ message: "Client ID is required for update." });
+    }
+
+    // Validate name if needed
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ message: "Client name is required." });
+    }
+
+    const updatedClient = await Client.findByIdAndUpdate(
+      id,
+      {
+        name: name.trim(),
+        contactPerson,
+        businessName,
+        address,
+        mobile,
+        emailId,
+        GSTIN,
+      },
+      { new: true }
+    );
+
+    if (!updatedClient) {
+      return res.status(404).json({ message: "Client not found." });
+    }
+
+    res.json({ message: "Client updated successfully", client: updatedClient });
+  } catch (error) {
+    console.error("Error updating client:", error);
+    res.status(500).json({ message: "Internal server error", error });
+  }
+});
 
 // DELETE /api/clients - Delete client by name
 router.delete("/", async (req, res) => {
