@@ -55,6 +55,12 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "Client name is required." });
     }
 
+     // Check if client with same name exists
+    const existingClient = await Client.findOne({ name: name.trim() });
+    if (existingClient) {
+      return res.status(409).json({ message: "Client with this name already exists." });
+    }
+
     const clientData = {
       name: name.trim(),
       contactPerson,
