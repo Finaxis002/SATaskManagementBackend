@@ -12,12 +12,12 @@ const TaskSchema = new mongoose.Schema({
 
   taskCategory: {
     type: String,
-    required: false, // Dropdown from frontend, add new if needed
+    required: false, 
   },
 
   department: {
     type: [String],
-    required: false, // Same as above
+    required: false,
   },
   clientName: {
     type: String,
@@ -26,7 +26,7 @@ const TaskSchema = new mongoose.Schema({
 
   code: {
     type: String,
-    required: false, // Project/task code - dropdown + add
+    required: false, 
   },
 
   assignedBy: {
