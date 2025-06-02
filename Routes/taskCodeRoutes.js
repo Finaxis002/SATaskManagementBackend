@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
 //   }
 // });
 // DELETE /api/task-codes/:id
-router.delete('/task-codes/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     // Step 1: Find and delete the code
     const deletedCode = await TaskCode.findByIdAndDelete(req.params.id);
