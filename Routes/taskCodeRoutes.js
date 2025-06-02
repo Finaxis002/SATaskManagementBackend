@@ -76,6 +76,35 @@ router.delete('/:id', async (req, res) => {
 
 
 // UPDATE /api/task-codes/:id - Edit task code name
+// router.put('/:id', async (req, res) => {
+//   try {
+//     const { name } = req.body;
+
+//     if (!name) {
+//       return res.status(400).json({ message: 'Name is required to update' });
+//     }
+
+//     // Find the task code by ID
+//     const taskCode = await TaskCode.findById(req.params.id);
+//     if (!taskCode) {
+//       return res.status(404).json({ message: 'Task code not found' });
+//     }
+
+//     // Extract serial number from existing name, if it exists
+//     const existingParts = taskCode.name.split(' ');
+//     const serialNumber = existingParts.length > 1 && !isNaN(existingParts[0]) ? existingParts[0] : '';
+
+//     // Update the name (preserve serial number if it exists)
+//     taskCode.name = serialNumber ? `${serialNumber} ${name}` : name;
+
+//     const updated = await taskCode.save();
+//     res.status(200).json(updated);
+//   } catch (err) {
+//     console.error("Error updating task code:", err);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+// UPDATE /api/task-codes/:id - Edit task code name
 router.put('/:id', async (req, res) => {
   try {
     const { name } = req.body;
@@ -84,26 +113,38 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ message: 'Name is required to update' });
     }
 
-    // Find the task code by ID
+    // Step 1: Find the task code by ID
     const taskCode = await TaskCode.findById(req.params.id);
     if (!taskCode) {
       return res.status(404).json({ message: 'Task code not found' });
     }
 
-    // Extract serial number from existing name, if it exists
+    // Step 2: Extract serial number from existing name
     const existingParts = taskCode.name.split(' ');
-    const serialNumber = existingParts.length > 1 && !isNaN(existingParts[0]) ? existingParts[0] : '';
+    const serialNumber =
+      existingParts.length > 1 && !isNaN(existingParts[0]) ? existingParts[0] : '';
 
-    // Update the name (preserve serial number if it exists)
-    taskCode.name = serialNumber ? `${serialNumber} ${name}` : name;
+    // Step 3: Construct new name
+    const oldName = taskCode.name; // Save old name for updating tasks
+    const newName = serialNumber ? `${serialNumber} ${name}` : name;
 
+    // Step 4: Update task code document
+    taskCode.name = newName;
     const updated = await taskCode.save();
+
+    // ✅ Step 5: Update all tasks that had the old code name
+    await Task.updateMany(
+      { code: oldName },
+      { $set: { code: newName } }
+    );
+
     res.status(200).json(updated);
   } catch (err) {
     console.error("Error updating task code:", err);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 
 module.exports = router;
