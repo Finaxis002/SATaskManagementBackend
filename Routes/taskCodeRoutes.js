@@ -54,5 +54,35 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// UPDATE /api/task-codes/:id - Edit task code name
+router.put('/:id', async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required to update' });
+    }
+
+    // Find the task code by ID
+    const taskCode = await TaskCode.findById(req.params.id);
+    if (!taskCode) {
+      return res.status(404).json({ message: 'Task code not found' });
+    }
+
+    // Extract serial number from existing name, if it exists
+    const existingParts = taskCode.name.split(' ');
+    const serialNumber = existingParts.length > 1 && !isNaN(existingParts[0]) ? existingParts[0] : '';
+
+    // Update the name (preserve serial number if it exists)
+    taskCode.name = serialNumber ? `${serialNumber} ${name}` : name;
+
+    const updated = await taskCode.save();
+    res.status(200).json(updated);
+  } catch (err) {
+    console.error("Error updating task code:", err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 module.exports = router;
