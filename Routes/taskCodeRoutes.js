@@ -41,18 +41,38 @@ router.get('/', async (req, res) => {
 });
 
 // DELETE /api/task-codes/:id
-router.delete("/:id", async (req, res) => {
+// router.delete("/:id", async (req, res) => {
+//   try {
+//     const deleted = await TaskCode.findByIdAndDelete(req.params.id);
+//     if (!deleted) {
+//       return res.status(404).json({ message: "Code not found" });
+//     }
+//     res.status(200).json({ message: "Code deleted successfully" });
+//   } catch (err) {
+//     console.error("Error deleting code:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+// DELETE /api/task-codes/:id
+router.delete('/task-codes/:id', async (req, res) => {
   try {
-    const deleted = await TaskCode.findByIdAndDelete(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({ message: "Code not found" });
-    }
-    res.status(200).json({ message: "Code deleted successfully" });
+    // Step 1: Find and delete the code
+    const deletedCode = await TaskCode.findByIdAndDelete(req.params.id);
+    if (!deletedCode) return res.status(404).send("Task code not found");
+
+    // Step 2: Remove the code from tasks using it
+    await Task.updateMany(
+      { code: deletedCode.name },
+      { $unset: { code: "" } } // Or: { $set: { code: "Unassigned" } }
+    );
+
+    res.status(200).json({ message: "Code deleted and removed from tasks." });
   } catch (err) {
     console.error("Error deleting code:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // UPDATE /api/task-codes/:id - Edit task code name
 router.put('/:id', async (req, res) => {
