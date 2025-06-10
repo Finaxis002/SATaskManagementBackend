@@ -9,6 +9,8 @@ const LeaveSchema = new mongoose.Schema({
   comments: { type: String },
   status: { type: String, default: "Pending" },
   createdAt: { type: Date, default: Date.now },
+  fromTime: { type: String, default: "" }, 
+  toTime: { type: String, default: "" },   
 });
 
 module.exports = mongoose.model("Leave", LeaveSchema);
