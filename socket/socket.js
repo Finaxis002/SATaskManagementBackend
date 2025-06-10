@@ -249,6 +249,7 @@ const initSocket = (httpServer) => {
         socketUserMap[socket.id] = email;            // ✅ Save locally
         console.log(`${username} connected with socket ID: ${socket.id}`);
         console.log('userSocketMap:', global.userSocketMap);
+         require('../services/leaveNotificationService').init(io, global.userSocketMap);
       } else {
         console.log("❌ Registration failed, email or username missing");
       }

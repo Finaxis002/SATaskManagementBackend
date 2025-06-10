@@ -2,14 +2,25 @@ let io = null;
 let userSocketMap = {};
 
 function init(ioInstance, socketMap) {
+  console.log('Initializing leave notifier...');
   io = ioInstance;
   userSocketMap = socketMap || {};
-  console.log("📡 Leave Notification Service Initialized");
+  console.log("📡 Leave Notification Service Initialized with", Object.keys(userSocketMap).length, "users");
 }
 
+
 function notifyAdminsOfLeaveRequest(leaveData) {
-  if (!io || !userSocketMap) {
-    console.error("Socket.io not initialized");
+  console.log('\n=== NOTIFYING ADMINS OF LEAVE REQUEST ===');
+  console.log('Current IO instance:', io ? '✅ Available' : '❌ Missing');
+  console.log('Current userSocketMap:', userSocketMap);
+
+  if (!io) {
+    console.error("Socket.io instance not initialized");
+    return;
+  }
+
+  if (!userSocketMap) {
+    console.error("User socket map not available");
     return;
   }
 
@@ -18,16 +29,25 @@ function notifyAdminsOfLeaveRequest(leaveData) {
     return;
   }
 
+  // Find all admin sockets
   const admins = Object.entries(userSocketMap)
-    .filter(([_, data]) => data.role === "admin");
+    .filter(([_, data]) => {
+      const isAdmin = data.role === 'admin';
+      console.log(`Checking ${_[0]}:`, isAdmin ? 'ADMIN' : 'user');
+      return isAdmin;
+    });
+
+  console.log('Found admins:', admins.map(([email]) => email));
 
   if (admins.length === 0) {
     console.log("⚠️ No admin users currently connected");
     return;
   }
 
+  // Notify each admin
   admins.forEach(([email, data]) => {
     try {
+      console.log(`Notifying admin ${email} on socket ${data.socketId}`);
       io.to(data.socketId).emit("new-leave", {
         userId: leaveData.userId,
         leaveType: leaveData.leaveType,
