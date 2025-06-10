@@ -1,46 +1,75 @@
-// services/leaveNotificationService.js
-
 let io = null;
 let userSocketMap = {};
 
 function init(ioInstance, socketMap) {
   io = ioInstance;
-  userSocketMap = socketMap;
+  userSocketMap = socketMap || {};
   console.log("📡 Leave Notification Service Initialized");
 }
 
-// 🔔 Notify all admins when a user applies for leave
 function notifyAdminsOfLeaveRequest(leaveData) {
-  if (!io || !userSocketMap) return;
+  if (!io || !userSocketMap) {
+    console.error("Socket.io not initialized");
+    return;
+  }
 
-  Object.entries(userSocketMap).forEach(([email, socketId]) => {
-    const role = email === "admin@example.com" || email.startsWith("admin") ? "admin" : "user"; // You can change this logic based on your role strategy
+  if (!leaveData?.userId) {
+    console.error("Invalid leave data - missing userId");
+    return;
+  }
 
-    if (role === "admin") {
-      io.to(socketId).emit("new-leave", {
+  const admins = Object.entries(userSocketMap)
+    .filter(([_, data]) => data.role === "admin");
+
+  if (admins.length === 0) {
+    console.log("⚠️ No admin users currently connected");
+    return;
+  }
+
+  admins.forEach(([email, data]) => {
+    try {
+      io.to(data.socketId).emit("new-leave", {
         userId: leaveData.userId,
         leaveType: leaveData.leaveType,
         fromDate: leaveData.fromDate,
         toDate: leaveData.toDate,
+        _id: leaveData._id,
+        timestamp: new Date().toISOString()
       });
       console.log(`📤 Sent new-leave notification to admin: ${email}`);
+    } catch (error) {
+      console.error(`Error notifying admin ${email}:`, error);
     }
   });
 }
 
-// 🔔 Notify user when their leave is approved/rejected
 function notifyUserOfLeaveStatusChange(leaveData) {
-  if (!io || !userSocketMap) return;
+  if (!io || !userSocketMap) {
+    console.error("Socket.io not initialized");
+    return;
+  }
 
-  const socketId = userSocketMap[leaveData.userId];
-  if (socketId) {
-    io.to(socketId).emit("leave-status-updated", {
-      leaveType: leaveData.leaveType,
-      status: leaveData.status,
-      fromDate: leaveData.fromDate,
-      toDate: leaveData.toDate,
-    });
-    console.log(`📤 Notified user (${leaveData.userId}) of status: ${leaveData.status}`);
+  if (!leaveData?.userId) {
+    console.error("Invalid leave data - missing userId");
+    return;
+  }
+
+  const socketInfo = userSocketMap[leaveData.userId];
+  if (socketInfo?.socketId) {
+    try {
+      io.to(socketInfo.socketId).emit("leave-status-updated", {
+        leaveType: leaveData.leaveType,
+        status: leaveData.status,
+        fromDate: leaveData.fromDate,
+        toDate: leaveData.toDate,
+        _id: leaveData._id,
+        message: leaveData.message || "",
+        timestamp: new Date().toISOString()
+      });
+      console.log(`📤 Notified user (${leaveData.userId}) of status: ${leaveData.status}`);
+    } catch (error) {
+      console.error(`Error notifying user ${leaveData.userId}:`, error);
+    }
   } else {
     console.log(`⚠️ User (${leaveData.userId}) is offline. Could not send update.`);
   }
