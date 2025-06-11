@@ -13,6 +13,7 @@ function notifyAdminsOfLeaveRequest(leaveData) {
   console.log('\n=== NOTIFYING ADMINS OF LEAVE REQUEST ===');
   console.log('Current IO instance:', io ? '✅ Available' : '❌ Missing');
   console.log('Current userSocketMap:', userSocketMap);
+    console.log('Current userSocketMap:', JSON.stringify(userSocketMap, null, 2));
 
   if (!io) {
     console.error("Socket.io instance not initialized");
@@ -30,12 +31,12 @@ function notifyAdminsOfLeaveRequest(leaveData) {
   }
 
   // Find all admin sockets
-  const admins = Object.entries(userSocketMap)
-    .filter(([_, data]) => {
-      const isAdmin = data.role === 'admin';
-      console.log(`Checking ${_[0]}:`, isAdmin ? 'ADMIN' : 'user');
-      return isAdmin;
-    });
+ const admins = Object.entries(userSocketMap)
+    .filter(([_, data]) => data.role === 'admin')
+    .map(([email, data]) => ({
+      email,
+      socketId: data.socketId
+    }));
 
   console.log('Found admins:', admins.map(([email]) => email));
 
@@ -45,20 +46,35 @@ function notifyAdminsOfLeaveRequest(leaveData) {
   }
 
   // Notify each admin
-  admins.forEach(([email, data]) => {
+  // admins.forEach(([email, data]) => {
+  //   try {
+  //     console.log(`Notifying admin ${email} on socket ${data.socketId}`);
+  //     io.to(data.socketId).emit("new-leave", {
+  //       userId: leaveData.userId,
+  //       leaveType: leaveData.leaveType,
+  //       fromDate: leaveData.fromDate,
+  //       toDate: leaveData.toDate,
+  //       _id: leaveData._id,
+  //       timestamp: new Date().toISOString()
+  //     });
+  //     console.log(`📤 Sent new-leave notification to admin: ${email}`);
+  //   } catch (error) {
+  //     console.error(`Error notifying admin ${email}:`, error);
+  //   }
+  // });
+
+  admins.forEach(admin => {
     try {
-      console.log(`Notifying admin ${email} on socket ${data.socketId}`);
-      io.to(data.socketId).emit("new-leave", {
-        userId: leaveData.userId,
-        leaveType: leaveData.leaveType,
-        fromDate: leaveData.fromDate,
-        toDate: leaveData.toDate,
-        _id: leaveData._id,
-        timestamp: new Date().toISOString()
+      console.log(`📤 Sending to ${admin.email} (${admin.socketId})`);
+      io.to(admin.socketId).emit("new-leave", notification);
+      
+      // Add this line to trigger the UI red dot
+      io.to(admin.socketId).emit("leave-alert", { 
+        showAlert: true,
+        userId: leaveData.userId 
       });
-      console.log(`📤 Sent new-leave notification to admin: ${email}`);
     } catch (error) {
-      console.error(`Error notifying admin ${email}:`, error);
+      console.error(`Failed to notify ${admin.email}:`, error);
     }
   });
 }

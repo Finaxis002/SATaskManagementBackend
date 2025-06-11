@@ -15,11 +15,8 @@
 //     },
 //   });
 
-  
-
 //   io.on("connection", (socket) => {
 //     console.log("🟢 Socket connected:", socket.id);
-
 
 //     // Register socket with user email
 //     // socket.on("register", (email, username) => {
@@ -43,7 +40,7 @@
 //      // Listen for task reminder events
 //      socket.on("task-reminder", (data) => {
 //       const { assigneeEmail, message } = data;
-      
+
 //       // Send reminder only to the assignee's socket ID
 //       const socketId = userSocketMap[assigneeEmail];  // Retrieve socket ID by assignee's email
 
@@ -65,7 +62,6 @@
 //     socket.on("inboxRead", () => {
 //       io.emit("inboxCountUpdated"); // let all clients update their badge
 //     });
-
 
 //     // Handle private messages
 //     socket.on("sendPrivateMessage", (data) => {
@@ -97,10 +93,6 @@
 
 // module.exports = initSocket;
 
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 // const { Server } = require("socket.io");
@@ -124,11 +116,8 @@
 //     },
 //   });
 
-  
-
 //   io.on("connection", (socket) => {
 //     console.log("🟢 Socket connected:", socket.id);
-
 
 //     // Register socket with user email
 //     // socket.on("register", (email, username) => {
@@ -143,7 +132,7 @@
 //     if (email && username) {
 //       userSocketMap[email] = socket.id;
 //       console.log(`${username} connected with socket ID: ${socket.id}`);
-//       console.log("userSocketMap:", userSocketMap); 
+//       console.log("userSocketMap:", userSocketMap);
 //     } else {
 //       console.log("❌ Registration failed, email or username missing");
 //     }
@@ -151,9 +140,9 @@
 
 //      // Listen for task reminder events
 //      socket.on("task-reminder", (data) => {
-     
+
 //       const { assigneeEmail, message } = data;
-      
+
 //       // Send reminder only to the assignee's socket ID
 //       const socketId = userSocketMap['user1@gmail.com'];  // Retrieve socket ID by assignee's email
 
@@ -175,7 +164,6 @@
 //     socket.on("inboxRead", () => {
 //       io.emit("inboxCountUpdated"); // let all clients update their badge
 //     });
-
 
 //     // Handle private messages
 //     socket.on("sendPrivateMessage", (data) => {
@@ -211,21 +199,13 @@
 
 // module.exports = socketManager;
 
-
-
-
-
-
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 
 const { Server } = require("socket.io");
 const { sendLoginReminders } = require("../services/taskReminderService"); // 🔁 Import your reminder function
 // ✅ Keep both mappings
 global.userSocketMap = global.userSocketMap || {}; // email => socket.id (GLOBAL for reminders)
-const socketUserMap = {};                           // socket.id => email (LOCAL for disconnect)
+const socketUserMap = {}; // socket.id => email (LOCAL for disconnect)
 
 const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -233,12 +213,14 @@ const initSocket = (httpServer) => {
       origin: [
         "http://localhost:5173",
         "https://task-management-software-phi.vercel.app",
-        "https://sataskmanagement.onrender.com"
+        "https://sataskmanagement.onrender.com",
       ],
       methods: ["GET", "POST"],
       credentials: true,
     },
   });
+
+let leaveNotifierInitialized = false;
 
   io.on("connection", (socket) => {
     console.log("🟢 Socket connected:", socket.id);
@@ -256,35 +238,53 @@ const initSocket = (httpServer) => {
     //   }
     // });
 
-
     // 🔔 On-demand login reminder trigger
-    
-    // new socket registration
-    socket.on("register", (email, username, role) => { 
-       console.log("🔌 Registering user with email:", email, "and role:", role); 
-      if (email && username && role) {
-        // Save user data in the socket map, including role
-        global.userSocketMap[email] = { socketId: socket.id, role };  // Store email, socketId, and role
-        socketUserMap[socket.id] = email;  // Save socketId to email mapping
-        console.log(`${username} (Role: ${role}) connected with socket ID: ${socket.id}`);
-        console.log("userSocketMap:", global.userSocketMap);
 
-        // Initialize leave notification service with updated userSocketMap
-        require('../services/leaveNotificationService').init(io, global.userSocketMap);
-      } else {
-        console.log("❌ Registration failed, email, username, or role missing");
-      }
-    });
+    // new socket registration
+    // Modified registration handler that maintains all existing functionality
+   socket.on("register", (email, username, role) => {
+  console.log("🔌 Registering user:", { email, username, role });
+
+  if (email && username) {
+    // Get existing data if available
+    const existingData = global.userSocketMap[email] || {};
     
+    // Role priority: 
+    // 1. New role from registration
+    // 2. Existing role from previous connection
+    // 3. Default to 'user' only if completely missing
+    const finalRole = role || existingData.role || 'user';
+    
+    // Preserve all existing data while updating
+    global.userSocketMap[email] = {
+      ...existingData,
+      socketId: socket.id,
+      username,
+      role: finalRole
+    };
+
+    socketUserMap[socket.id] = email;
+
+    console.log(`${username} (${finalRole}) connected: ${socket.id}`);
+    console.log("Updated userSocketMap:", global.userSocketMap);
+
+    if (!leaveNotifierInitialized) {
+      require('../services/leaveNotificationService').init(io, global.userSocketMap);
+      leaveNotifierInitialized = true;
+    }
+  } else {
+    console.log("❌ Registration failed - email and username required");
+  }
+});
+
     socket.on("request-login-reminder", async (email) => {
       try {
-        await sendLoginReminders(email);  // 🔁 Use your actual reminder logic
+        await sendLoginReminders(email); // 🔁 Use your actual reminder logic
         console.log("✅ Task-based login reminders sent to:", email);
       } catch (err) {
         console.error("❌ Error sending login reminders via socket:", err);
       }
     });
-
 
     // ✅ Task Reminder Event
     socket.on("task-reminder", (data) => {
@@ -315,8 +315,8 @@ const initSocket = (httpServer) => {
       const email = socketUserMap[socket.id]; // Get email by socket id
 
       if (email) {
-        delete global.userSocketMap[email];  // ✅ Remove from global mapping
-        delete socketUserMap[socket.id];      // ✅ Remove from local mapping
+        delete global.userSocketMap[email]; // ✅ Remove from global mapping
+        delete socketUserMap[socket.id]; // ✅ Remove from local mapping
         console.log(`❌ Disconnected: ${email}`);
       }
     });
@@ -326,5 +326,3 @@ const initSocket = (httpServer) => {
 };
 
 module.exports = initSocket;
-
-
