@@ -243,20 +243,38 @@ const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log("🟢 Socket connected:", socket.id);
 
-    socket.on("register", (email, username) => {
-      if (email && username) {
-        global.userSocketMap[email] = socket.id;    // ✅ Save globally
-        socketUserMap[socket.id] = email;            // ✅ Save locally
-        console.log(`${username} connected with socket ID: ${socket.id}`);
-        console.log('userSocketMap:', global.userSocketMap);
-         require('../services/leaveNotificationService').init(io, global.userSocketMap);
-      } else {
-        console.log("❌ Registration failed, email or username missing");
-      }
-    });
+    // old and working socket registration
+    // socket.on("register", (email, username) => {
+    //   if (email && username) {
+    //     global.userSocketMap[email] = socket.id;    // ✅ Save globally
+    //     socketUserMap[socket.id] = email;            // ✅ Save locally
+    //     console.log(`${username} connected with socket ID: ${socket.id}`);
+    //     console.log('userSocketMap:', global.userSocketMap);
+    //      require('../services/leaveNotificationService').init(io, global.userSocketMap);
+    //   } else {
+    //     console.log("❌ Registration failed, email or username missing");
+    //   }
+    // });
 
 
     // 🔔 On-demand login reminder trigger
+    
+    // new socket registration
+    socket.on("register", (email, username, role) => { // Receive role as well
+      if (email && username && role) {
+        // Save user data in the socket map, including role
+        global.userSocketMap[email] = { socketId: socket.id, role };  // Store email, socketId, and role
+        socketUserMap[socket.id] = email;  // Save socketId to email mapping
+        console.log(`${username} (Role: ${role}) connected with socket ID: ${socket.id}`);
+        console.log("userSocketMap:", global.userSocketMap);
+
+        // Initialize leave notification service with updated userSocketMap
+        require('../services/leaveNotificationService').init(io, global.userSocketMap);
+      } else {
+        console.log("❌ Registration failed, email, username, or role missing");
+      }
+    });
+    
     socket.on("request-login-reminder", async (email) => {
       try {
         await sendLoginReminders(email);  // 🔁 Use your actual reminder logic
