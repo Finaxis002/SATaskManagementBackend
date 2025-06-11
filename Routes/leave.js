@@ -11,6 +11,7 @@ router.post("/", async (req, res) => {
 
      // 🔔 Notify all admins of new leave
     leaveNotifier.notifyAdminsOfLeaveRequest(leave);
+    console.log("new leave request")
     res.status(201).json({ message: "Leave submitted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error submitting leave", error });
