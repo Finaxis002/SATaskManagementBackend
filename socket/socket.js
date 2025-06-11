@@ -260,7 +260,8 @@ const initSocket = (httpServer) => {
     // 🔔 On-demand login reminder trigger
     
     // new socket registration
-    socket.on("register", (email, username, role) => { // Receive role as well
+    socket.on("register", (email, username, role) => { 
+       console.log("🔌 Registering user with email:", email, "and role:", role); 
       if (email && username && role) {
         // Save user data in the socket map, including role
         global.userSocketMap[email] = { socketId: socket.id, role };  // Store email, socketId, and role
