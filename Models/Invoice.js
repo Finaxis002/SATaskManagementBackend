@@ -34,11 +34,11 @@ const invoiceSchema = new mongoose.Schema({
     description: String,
     hsn: String,
     qty: Number,
-    rate: Number,
+    rate: String,
     
   }],
 
-  totalAmount: Number,
+  totalAmount:{ type: String, required: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);
