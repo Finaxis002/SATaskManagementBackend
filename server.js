@@ -18,6 +18,7 @@ const MainAdmin = require("./Models/mainAdminCredentials");
 const bcrypt = require("bcryptjs");
 const leaveRoutes = require("./Routes/leave")
 const invoiceRoutes = require('./Routes/invoice')
+const sentOtpViewInvoiceRoutes = require('./Routes/sentOtpViewInvoice')
 
 
 scheduleTaskRepeats(); // Initialize the cron job
@@ -55,6 +56,7 @@ app.use('/api/task-codes', taskCodeRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/leave", leaveRoutes); 
 app.use('/api/invoices', invoiceRoutes);
+app.use('/',sentOtpViewInvoiceRoutes )
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
