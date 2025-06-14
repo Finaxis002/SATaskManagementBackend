@@ -2,38 +2,81 @@ const ChatMessage = require("../Models/ChatMessage");
 const express = require("express");
 const router = express.Router();
 const Employee = require("../Models/Employee");
-const upload = require("../upload")
+const upload = require("../upload");
 const path = require("path");
 
+// Function to get users in a specific group
+const getUsersInGroup = async (groupName) => {
+  try {
+    // Find all employees belonging to the given group
+    const usersInGroup = await Employee.find({ department: groupName });
+    return usersInGroup; // Return users found in the group
+  } catch (err) {
+    console.error("❌ Error fetching users in group:", err);
+    return []; // Return an empty array if there's an error
+  }
+};
+
+// Post route for sending messages to a group
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
-  const { sender, text, timestamp } = req.body;
+  const { sender, text, timestamp, recipient } = req.body; // Added recipient to the request body
 
-  console.log("Received message:", { sender, text, timestamp, group });
+  console.log("Received message:", { sender, text, timestamp, group, recipient });
 
+  // Check for missing fields
   if (!sender || !text || !timestamp) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
   try {
+    // Create a new message instance
     const newMessage = new ChatMessage({
       sender,
       text,
       timestamp,
       group,
+      recipient, // Store the recipient in case of direct messages
     });
 
+    // Save the message to the database
     const savedMessage = await newMessage.save();
+
+    // Get the socket.io instance
     const io = req.app.get("io");
+
+    // Emit the saved message to all connected clients (for real-time update)
     io.emit("receiveMessage", savedMessage);
-    io.emit("inboxCountUpdated");
-    
-    res.status(201).json(savedMessage);  // Respond with saved message
+
+    // If the message has a recipient (personal message)
+    if (recipient) {
+      const recipientSocket = getSocketIdByName(recipient); // Get the socket ID of the recipient
+      const senderSocket = getSocketIdByName(sender); // Get the socket ID of the sender
+
+      // Emit inbox count update to both sender and recipient
+      if (recipientSocket) io.to(recipientSocket).emit("inboxCountUpdated");
+      if (senderSocket) io.to(senderSocket).emit("inboxCountUpdated");
+    } 
+    // If it's a group message
+    else if (group) {
+      // Get the users in the group using the getUsersInGroup function
+      const groupUsers = await getUsersInGroup(group); // Get the users in the group
+
+      // Emit inbox count update to all users in the group
+      groupUsers.forEach((user) => {
+        const socketId = getSocketIdByName(user.name); // Get the socket ID by username
+        if (socketId) io.to(socketId).emit("inboxCountUpdated");
+      });
+    }
+
+    // Respond with the saved message
+    res.status(201).json(savedMessage);
   } catch (err) {
     console.error("❌ Error saving message:", err);
     res.status(500).json({ message: "Failed to save message", error: err.message });
   }
 });
+
 
 // Enhanced API for fetching group messages with pagination and filtering
 router.get("/messages/:group", async (req, res) => {
@@ -80,26 +123,26 @@ router.get("/messages/:group", async (req, res) => {
 });
 
 // ✅ GET unread message count for a user
-router.get("/unread-count", async (req, res) => {
-  const { name, role } = req.query;
+// router.get("/unread-count", async (req, res) => {
+//   const { name, role } = req.query;
 
-  if (!name || !role) {
-    return res.status(400).json({ message: "Name and role are required" });
-  }
+//   if (!name || !role) {
+//     return res.status(400).json({ message: "Name and role are required" });
+//   }
 
-  try {
-    // Count unread messages NOT sent by current user
-    const unreadMessages = await ChatMessage.find({
-      read: false,
-      sender: { $ne: name }, // Don't count messages sent by user themselves
-    });
+//   try {
+//     // Count unread messages NOT sent by current user
+//     const unreadMessages = await ChatMessage.find({
+//       read: false,
+//       sender: { $ne: name }, // Don't count messages sent by user themselves
+//     });
 
-    res.json({ unreadCount: unreadMessages.length }); // ✅ Just total unread messages
-  } catch (err) {
-    console.error("❌ Error fetching unread count:", err.message);
-    res.status(500).json({ message: "Failed to fetch unread count" });
-  }
-});
+//     res.json({ unreadCount: unreadMessages.length }); // ✅ Just total unread messages
+//   } catch (err) {
+//     console.error("❌ Error fetching unread count:", err.message);
+//     res.status(500).json({ message: "Failed to fetch unread count" });
+//   }
+// });
 
 // PUT route to mark all messages as read
 router.put("/mark-read", async (req, res) => {
@@ -108,7 +151,7 @@ router.put("/mark-read", async (req, res) => {
 
     // 🛠️ After updating, broadcast to all connected clients
     const io = req.app.get("io"); // make sure your socket.io instance is attached
-    io.emit("inboxCountUpdated");  // ✅ Tell frontend to refresh badges
+    io.emit("inboxCountUpdated"); // ✅ Tell frontend to refresh badges
 
     res.status(200).json({ message: "All messages marked as read" });
   } catch (err) {
@@ -117,67 +160,70 @@ router.put("/mark-read", async (req, res) => {
   }
 });
 
+// router.get("/group-unread-counts", async (req, res) => {
+//   const { name } = req.query;
 
-router.get("/group-unread-counts", async (req, res) => {
-  const { name } = req.query;
+//   if (!name) return res.status(400).json({ message: "Name is required" });
 
-  if (!name) return res.status(400).json({ message: "Name is required" });
+//   try {
+//     const unreadMessages = await ChatMessage.find({
+//       read: false,
+//       sender: { $ne: name },
+//     });
 
-  try {
-    const unreadMessages = await ChatMessage.find({
-      read: false,
-      sender: { $ne: name },
-    });
+//     const counts = {};
+//     unreadMessages.forEach((msg) => {
+//       if (
+//         msg.group &&
+//         typeof msg.group === "string" &&
+//         msg.group.trim() !== ""
+//       ) {
+//         counts[msg.group] = (counts[msg.group] || 0) + 1;
+//       }
+//     });
 
-    const counts = {};
-    unreadMessages.forEach((msg) => {
-      if (msg.group && typeof msg.group === "string" && msg.group.trim() !== "") {
-        counts[msg.group] = (counts[msg.group] || 0) + 1;
-      }
-    });
-    
-
-    res.json({ groupUnreadCounts: counts });
-  } catch (error) {
-    console.error("❌ Error fetching group counts:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
+//     res.json({ groupUnreadCounts: counts });
+//   } catch (error) {
+//     console.error("❌ Error fetching group counts:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
 
 // Add this to your backend routes
-router.get("/user-unread-counts", async (req, res) => {
-  const { name } = req.query;
-  
-  try {
-    const results = await ChatMessage.aggregate([
-      {
-        $match: {
-          read: false,
-          sender: { $ne: name },
-          group: { $exists: false } // Only individual messages
-        }
-      },
-      {
-        $group: {
-          _id: "$sender",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+// router.get("/user-unread-counts", async (req, res) => {
+//   const { name } = req.query;
 
-    const counts = {};
-    results.forEach(item => {
-      counts[item._id] = item.count;
-    });
+//   try {
+//     const results = await ChatMessage.aggregate([
+//       {
+//         $match: {
+//           read: false,
+//           sender: { $ne: name },
+//           group: { $exists: false }, // Only individual messages
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$sender",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
 
-    res.json({ userUnreadCounts: counts });
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
-  }
-});
+//     const counts = {};
+//     results.forEach((item) => {
+//       counts[item._id] = item.count;
+//     });
+
+//     res.json({ userUnreadCounts: counts });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
 
 // PUT /api/mark-read-group
+
+
 router.put("/mark-read-group", async (req, res) => {
   const { name, group } = req.body;
 
@@ -195,7 +241,9 @@ router.put("/mark-read-group", async (req, res) => {
       { $set: { read: true } }
     );
 
-    console.log(`✅ Marked ${result.modifiedCount} messages as read in group ${group}`);
+    console.log(
+      `✅ Marked ${result.modifiedCount} messages as read in group ${group}`
+    );
 
     // 🔁 Emit socket event to update sidebar badges
     req.app.get("io").emit("inboxCountUpdated");
@@ -203,7 +251,9 @@ router.put("/mark-read-group", async (req, res) => {
     return res.json({ success: true, updated: result.modifiedCount });
   } catch (error) {
     console.error("❌ Error marking group messages as read:", error.message);
-    return res.status(500).json({ message: "Failed to mark group messages as read" });
+    return res
+      .status(500)
+      .json({ message: "Failed to mark group messages as read" });
   }
 });
 
@@ -219,11 +269,10 @@ router.get("/group-members/:group", async (req, res) => {
   }
 });
 
-
 // POST API to send a message to a user
 router.post("/messages/user/:username", async (req, res) => {
-  const { username } = req.params;  // Get the recipient username from the URL
-  const { sender, text, timestamp } = req.body;  // Extract message details from the request body
+  const { username } = req.params; // Get the recipient username from the URL
+  const { sender, text, timestamp } = req.body; // Extract message details from the request body
 
   console.log("Received message:", { sender, text, timestamp, username });
 
@@ -238,21 +287,22 @@ router.post("/messages/user/:username", async (req, res) => {
       sender,
       text,
       timestamp,
-      recipient: username,  // Store the recipient username
+      recipient: username, // Store the recipient username
     });
 
     const savedMessage = await newMessage.save();
     const io = req.app.get("io");
     io.emit("receiveMessage", savedMessage);
-    io.emit("inboxCountUpdated");    
+    io.emit("inboxCountUpdated");
 
-    res.status(201).json(savedMessage);  // Respond with the saved message
+    res.status(201).json(savedMessage); // Respond with the saved message
   } catch (err) {
     console.error("❌ Error saving message:", err);
-    res.status(500).json({ message: "Failed to save message", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to save message", error: err.message });
   }
 });
-
 
 router.get("/messages/user/:username", async (req, res) => {
   const { username } = req.params;
@@ -269,8 +319,6 @@ router.get("/messages/user/:username", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-
 
 // ✅ NEW ROUTE to fetch all group members
 router.get("/group-members", async (req, res) => {
@@ -292,7 +340,6 @@ router.get("/group-members", async (req, res) => {
   }
 });
 
-
 // Define the API endpoint to upload files
 router.post("/api/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
@@ -306,8 +353,147 @@ router.post("/api/upload", upload.single("file"), (req, res) => {
   res.status(200).send({ fileUrl });
 });
 
+
+// Updated /unread-count endpoint
+// router.get("/unread-count", async (req, res) => {
+//   const { name } = req.query;
+
+//   try {
+//     // Get user's groups first
+//     const user = await Employee.findOne({ name });
+//     const userGroups = user?.department || [];
+
+//     // Count direct messages to this user
+//     const directCount = await ChatMessage.countDocuments({
+//       recipient: name,
+//       read: false,
+//       sender: { $ne: name }
+//     });
+
+//     // Count group messages in user's groups
+//     const groupCount = await ChatMessage.countDocuments({
+//       group: { $in: userGroups },
+//       read: false,
+//       sender: { $ne: name }
+//     });
+
+//     res.json({ 
+//       unreadCount: directCount + groupCount 
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
+router.get("/unread-count", async (req, res) => {
+  const { name, role } = req.query;
+
+  try {
+    let count = 0;
+
+    // Direct unread messages
+    const directUnread = await ChatMessage.countDocuments({
+      recipient: name,
+      read: false,
+      sender: { $ne: name },
+    });
+
+    count += directUnread;
+
+    // For admins or users in groups
+    if (role === "admin" || role === "user") {
+      const user = await Employee.findOne({ name });
+      const userGroups = user?.department || [];
+
+      const groupUnread = await ChatMessage.countDocuments({
+        group: { $in: userGroups },
+        read: false,
+        sender: { $ne: name },
+      });
+
+      count += groupUnread;
+    }
+
+    res.json({ unreadCount: count });
+  } catch (err) {
+    console.error("❌ Failed fetching unread count:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+// Updated /group-unread-counts endpoint
+router.get("/group-unread-counts", async (req, res) => {
+  const { name } = req.query;
+
+  try {
+    // Get user's groups first
+    const user = await Employee.findOne({ name });
+    const userGroups = user?.department || [];
+
+    // Aggregate counts only for user's groups
+    const results = await ChatMessage.aggregate([
+      {
+        $match: {
+          group: { $in: userGroups },
+          read: false,
+          sender: { $ne: name }
+        }
+      },
+      {
+        $group: {
+          _id: "$group",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = {};
+    results.forEach(item => {
+      counts[item._id] = item.count;
+    });
+
+    res.json({ groupUnreadCounts: counts });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Updated /user-unread-counts endpoint
+router.get("/user-unread-counts", async (req, res) => {
+  const { name } = req.query;
+
+  try {
+    const results = await ChatMessage.aggregate([
+      {
+        $match: {
+          recipient: name, // Only messages sent to this user
+          read: false,
+          sender: { $ne: name }, // Not their own messages
+          group: { $exists: false } // Only direct messages
+        }
+      },
+      {
+        $group: {
+          _id: "$sender",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = {};
+    results.forEach(item => {
+      counts[item._id] = item.count;
+    });
+
+    res.json({ userUnreadCounts: counts });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Serve the uploaded files statically
 router.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 
 module.exports = router;
