@@ -100,7 +100,7 @@ const insertDefaultAdmin = async () => {
 insertDefaultAdmin();
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 1100;
 // app.listen(PORT, () => {
 //   console.log(`Server running on port ${PORT}`);
 // });
