@@ -233,7 +233,8 @@ const initSocket = (httpServer) => {
       origin: [
         "http://localhost:5173",
         "https://task-management-software-phi.vercel.app",
-        "https://sataskmanagement.onrender.com"
+        "https://sataskmanagement.onrender.com",
+        "https://tasks.sharda.co.in"
       ],
       methods: ["GET", "POST"],
       credentials: true,
