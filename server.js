@@ -38,8 +38,11 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // for local development
-      // "https://task-management-software-phi.vercel.app",
-      "https://sataskmanagement.onrender.com" // for production
+
+      "https://task-management-software-phi.vercel.app",
+      "https://sataskmanagement.onrender.com",
+      "https://tasks.sharda.co.in"
+
     ],
     credentials: true, // Allow cookies to be sent with the request
   })
@@ -61,8 +64,7 @@ app.use('/',sentOtpViewInvoiceRoutes )
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
 
-// const socketManager = require('./socket/socket');
-// const io = socketManager.initSocket(server);
+
 
 app.set("io", io);
 app.set("userSocketMap", userSocketMap);
