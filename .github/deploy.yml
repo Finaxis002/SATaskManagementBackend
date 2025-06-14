@@ -2,7 +2,8 @@ name: Deploy Backend to VPS
 
 on:
   push:
-    branches: [main]  # Change this to your branch if needed
+    branches: 
+      - main   # Change this to your branch if needed
 
 jobs:
   deploy:
@@ -18,13 +19,13 @@ jobs:
         node-version: 18
 
     - name: Deploy via SSH
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v0.1.0  # Use a specific version for stability
       with:
-        host: YOUR_SERVER_IP
+        host: ${{ secrets.SERVER_IP }}  # Use secret for server IP
         username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd /home/SATaskManagementBackend
           git pull origin main
           npm install
-          pm2 restart taskbe --update-env
+          pm2 restart taskbe --update-env   # Ensure the service name is correct
