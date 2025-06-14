@@ -1,50 +1,30 @@
-name: Deploy to Server
+name: Deploy Backend to VPS
 
 on:
   push:
-    branches:
-      - main  # Trigger deployment on push to the main branch
+    branches: [main]  # Change this to your branch if needed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Check out the code from the repository
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      # Set up SSH
-      - name: Set up SSH key
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your private key in GitHub secrets
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-      # Install necessary dependencies
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'  # Use your required node version
-
-      # Install dependencies
-      - name: Install dependencies
-        run: |
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: YOUR_SERVER_IP
+        username: root
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /home/SATaskManagementBackend
+          git pull origin main
           npm install
-
-      # Run tests (optional)
-      - name: Run tests
-        run: |
-          npm test
-
-      # Deploy to the server via SSH
-      - name: Deploy to server
-        run: |
-          ssh -o StrictHostKeyChecking=no youruser@yourserver.com << 'EOF'
-            cd /home/youruser/your-backend-app
-            git pull origin main  # Pull the latest changes from the main branch
-            npm install  # Install dependencies
-            npm run build  # Build the app (if needed)
-            pm2 restart taskbe  # Restart the PM2 process
-          EOF
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          pm2 restart taskbe --update-env
