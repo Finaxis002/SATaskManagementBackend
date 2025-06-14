@@ -81,7 +81,7 @@ leaveNotificationService.init(io, userSocketMap);
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Task Management Backend is running");
+  res.send("Task Management Backend is running :)");
 });
 
 const insertDefaultAdmin = async () => {
