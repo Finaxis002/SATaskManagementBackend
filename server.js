@@ -38,9 +38,11 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // for local development
+
       "https://task-management-software-phi.vercel.app",
       "https://sataskmanagement.onrender.com",
       "https://tasks.sharda.co.in"
+
     ],
     credentials: true, // Allow cookies to be sent with the request
   })
@@ -79,7 +81,7 @@ leaveNotificationService.init(io, userSocketMap);
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Task Management Backend is running!");
+  res.send("Task Management Backend is running");
 });
 
 const insertDefaultAdmin = async () => {

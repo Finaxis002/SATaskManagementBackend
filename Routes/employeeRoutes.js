@@ -4,20 +4,17 @@ const Employee = require("../Models/Employee");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const MainAdmin = require("../Models/mainAdminCredentials");
-  
-  const { sendLoginReminders } = require("../services/taskReminderService");
+const nodemailer = require("nodemailer");
+
+const { sendLoginReminders } = require("../services/taskReminderService");
 
 // Hardcoded admin credentials
 let adminUserId = "admin"; // Change this as needed
 let adminPassword = "admin123"; // ✅ Now it's reassignable
 
-
-
-
-
-
 router.post("/", async (req, res) => {
-  const { name, email, position, department, userId, password, role } = req.body;
+  const { name, email, position, department, userId, password, role } =
+    req.body;
 
   // Validation checks (optional)
   if (!name || !email || !position || !userId || !password) {
@@ -35,7 +32,7 @@ router.post("/", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Default role to 'user' if not provided
-    const newEmployeeRole = role || 'user'; // Default to 'user' role if not provided
+    const newEmployeeRole = role || "user"; // Default to 'user' role if not provided
 
     const newEmployee = new Employee({
       name,
@@ -48,18 +45,19 @@ router.post("/", async (req, res) => {
     });
 
     await newEmployee.save();
-    res.status(201).json({ message: "Employee added successfully", employee: newEmployee });
+    res
+      .status(201)
+      .json({ message: "Employee added successfully", employee: newEmployee });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error adding employee", error });
   }
 });
 
-
 // GET /api/employees - Get all employees
 router.get("/", async (req, res) => {
   try {
-    const employees = await Employee.find(); 
+    const employees = await Employee.find();
     res.json(employees);
   } catch (err) {
     console.error(err);
@@ -95,21 +93,22 @@ router.put("/:id", async (req, res) => {
     employee.position = position;
     employee.department = department;
     employee.userId = userId;
-    employee.role = role || employee.role;  // Update role if provided
+    employee.role = role || employee.role; // Update role if provided
 
     // Save the updated employee to the database
     const updatedEmployee = await employee.save();
-    
+
     res.json({
       message: "Employee updated successfully",
-      employee: updatedEmployee
+      employee: updatedEmployee,
     });
   } catch (err) {
     console.error("Error updating employee:", err);
-    res.status(500).json({ message: "Error updating employee", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error updating employee", error: err.message });
   }
 });
-
 
 // DELETE /api/employees/:id - Delete employee
 router.delete("/:id", async (req, res) => {
@@ -132,15 +131,19 @@ router.delete("/:id", async (req, res) => {
 // POST /api/employees/login - Login route for both Admin and Employees
 router.post("/login", async (req, res) => {
   const { userId, password } = req.body;
- // Check hardcoded admin from DB
+  // Check hardcoded admin from DB
   const mainAdmin = await MainAdmin.findOne({ userId });
 
   if (mainAdmin) {
     const isMatch = await bcrypt.compare(password, mainAdmin.password);
     if (isMatch) {
-      const token = jwt.sign({ userId: mainAdmin.userId, role: "admin" }, "your_jwt_secret", {
-        expiresIn: "1h",
-      });
+      const token = jwt.sign(
+        { userId: mainAdmin.userId, role: "admin" },
+        "your_jwt_secret",
+        {
+          expiresIn: "1h",
+        }
+      );
 
       return res.json({
         message: "Admin login successful",
@@ -168,29 +171,26 @@ router.post("/login", async (req, res) => {
         userId: user.userId,
         email: user.email,
         name: user.name,
-        role: user.role || "user"
+        role: user.role || "user",
       },
       "your_jwt_secret",
       { expiresIn: "1h" }
     );
 
-    console.log('⏰ 1. Starting login reminder process for:', user.email);
-console.log('⏰ 2. Current time:', new Date().toISOString());
+    console.log("⏰ 1. Starting login reminder process for:", user.email);
+    console.log("⏰ 2. Current time:", new Date().toISOString());
 
-
-
-
-      // ✅ Fixed: Fire-and-forget with proper error handling
+    // ✅ Fixed: Fire-and-forget with proper error handling
     // ✅ Run detailed task reminders
-(async () => {
-  try {
-    console.log(`📨 Running login reminders for ${user.email}`);
-    await sendLoginReminders(user.email); // <-- This now sends task name + due date
-    console.log(`✅ Login reminders sent for ${user.email}`);
-  } catch (err) {
-    console.error("❌ Reminder error:", err);
-  }
-})();
+    (async () => {
+      try {
+        console.log(`📨 Running login reminders for ${user.email}`);
+        await sendLoginReminders(user.email); // <-- This now sends task name + due date
+        console.log(`✅ Login reminders sent for ${user.email}`);
+      } catch (err) {
+        console.error("❌ Reminder error:", err);
+      }
+    })();
 
     return res.json({
       message: "Login successful",
@@ -198,7 +198,7 @@ console.log('⏰ 2. Current time:', new Date().toISOString());
       name: user.name,
       role: user.role || "user",
       email: user.email,
-      department: user.department // ✅ Added here
+      department: user.department, // ✅ Added here
     });
   } catch (error) {
     console.error(error);
@@ -212,12 +212,14 @@ router.post("/reset-password/admin", async (req, res) => {
     const { newPassword } = req.body;
 
     if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ message: "Password must be at least 4 characters long" });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 4 characters long" });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // ✅ UPDATE the password in MainAdmin collection
+    // ✅ Update in DB
     const updatedAdmin = await MainAdmin.findOneAndUpdate(
       { userId: "admin" },
       { password: hashedPassword },
@@ -228,16 +230,43 @@ router.post("/reset-password/admin", async (req, res) => {
       return res.status(404).json({ message: "Admin account not found" });
     }
 
-    console.log("✅ Admin password updated in database");
-    return res.json({ message: "Admin password reset successfully" });
+    // ✅ Setup nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "shardaassociates.in@gmail.com", // Your Gmail
+        pass: "ullq uygv ynkk rfsi", // Use App Password if 2FA is enabled
+      },
+    });
 
+    // ✅ Compose mail
+    const mailOptions = {
+      from: '"Sharda Associate" <shardaassociate.in@gmail.com>',
+      to: "caanunaysharda@gmail.com",
+      subject: "Admin Password Reset",
+      html: `
+    <h1>🔐 Task Management System</h1>
+    <h3>✅ Main Admin Password Reset Successful</h3>
+    <p>The password for the <strong>admin</strong> account has been successfully changed.</p>
+    <p><strong>Reset Time:</strong> ${new Date().toLocaleString()}</p>
+    <p><strong>New Password:</strong> <code style="background:#f0f0f0; padding:4px 8px; border-radius:4px;">${newPassword}</code></p>
+    <br/>
+    <p>If this reset was not initiated by you, please contact the administrator immediately.</p>
+  `,
+    };
+
+    // ✅ Send mail
+    await transporter.sendMail(mailOptions);
+    console.log("📧 Reset confirmation email sent.");
+
+    return res.json({
+      message: "Admin password reset successfully and email sent.",
+    });
   } catch (err) {
     console.error("❌ Admin password reset error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-
-
 
 // POST /api/employees/reset-password/:id - Reset password
 router.post("/reset-password/:id", async (req, res) => {
@@ -245,7 +274,9 @@ router.post("/reset-password/:id", async (req, res) => {
     const { newPassword } = req.body;
 
     if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ message: "Password must be at least 4 characters long" });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 4 characters long" });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -264,10 +295,5 @@ router.post("/reset-password/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-
-
-
-
 
 module.exports = router;

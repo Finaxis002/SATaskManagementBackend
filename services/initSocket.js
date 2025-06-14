@@ -1,4 +1,3 @@
-// initSocket.js
 const { Server } = require('socket.io');
 const userSocketMap = {};  // Store user email => socket id mapping
 
