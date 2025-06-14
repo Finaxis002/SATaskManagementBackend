@@ -411,4 +411,52 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// GET /api/tasks/by-client-name/:clientName - fetch tasks by client name
+// router.get("/by-client-name/:clientName", async (req, res) => {
+//   try {
+//     const clientName = decodeURIComponent(req.params.clientName);
+
+//     // Case-insensitive exact match for safety
+//     const tasks = await Task.find({
+//       clientName: { $regex: `^${clientName}$`, $options: "i" }
+//     });
+
+//     res.json(tasks);
+//   } catch (error) {
+//     console.error("❌ Failed to fetch tasks by client name", error);
+//     res.status(500).json({ error: "Failed to fetch tasks by client name" });
+//   }
+// });
+router.get("/by-client-name/:clientName", async (req, res) => {
+  try {
+    const clientName = decodeURIComponent(req.params.clientName);
+    const { fromDate, toDate } = req.query;
+
+    // Base filter for clientName (case-insensitive exact match)
+    let filter = {
+      clientName: { $regex: `^${clientName}$`, $options: "i" },
+    };
+
+    // Add assignedDate filter if fromDate or toDate provided
+    if (fromDate || toDate) {
+      filter.assignedDate = {};
+      if (fromDate) filter.assignedDate.$gte = new Date(fromDate);
+      if (toDate) {
+  // Set toDate time to end of day to include entire date
+  const toDateObj = new Date(toDate);
+  toDateObj.setHours(23, 59, 59, 999);
+  filter.assignedDate.$lte = toDateObj;
+}
+    }
+
+    const tasks = await Task.find(filter).sort({ assignedDate: 1 });
+
+    res.json(tasks);
+  } catch (error) {
+    console.error("❌ Failed to fetch tasks by client name with date filter", error);
+    res.status(500).json({ error: "Failed to fetch tasks by client name" });
+  }
+});
+
+
 module.exports = router;
