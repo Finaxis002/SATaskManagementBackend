@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const TaskCode = require('../Models/TaskCode');
 const Task = require('../Models/Task');
+const verifyToken = require("../middleware/verifyToken");
+const checkHeaders = require("../middleware/checkHeaders");
+
+router.use(checkHeaders);
+router.use(verifyToken);
 // Create a new task code
 router.post('/', async (req, res) => {
   try {

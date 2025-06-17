@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const Department = require("../Models/Department");
 const Employee = require("../Models/Employee");
+const verifyToken = require("../middleware/verifyToken");
+const checkHeaders = require("../middleware/checkHeaders");
+
+router.use(checkHeaders);
+router.use(verifyToken);
 
 // GET all departments
 router.get("/", async (req, res) => {

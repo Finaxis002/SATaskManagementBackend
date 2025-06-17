@@ -139,7 +139,7 @@ router.post("/login", async (req, res) => {
     if (isMatch) {
       const token = jwt.sign(
         { userId: mainAdmin.userId, role: "admin" },
-        "your_jwt_secret",
+        process.env.JWT_SECRET,
         {
           expiresIn: "1h",
         }
@@ -173,7 +173,7 @@ router.post("/login", async (req, res) => {
         name: user.name,
         role: user.role || "user",
       },
-      "your_jwt_secret",
+      process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 
