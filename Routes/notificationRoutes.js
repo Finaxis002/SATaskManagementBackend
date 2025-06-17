@@ -3,10 +3,13 @@ const express = require("express");
 const router = express.Router();
 const Notification = require("../Models/Notification");
 const { io, userSocketMap } = require("../server");
+const verifyToken = require("../middleware/verifyToken");
+const checkHeaders = require("../middleware/checkHeaders");
 
 
 // ✅ Keep specific routes before dynamic ones
-
+router.use(checkHeaders);
+router.use(verifyToken);
 // Count unread notifications
 router.get("/unread-count/:email", async (req, res) => {
   const email = req.params.email;

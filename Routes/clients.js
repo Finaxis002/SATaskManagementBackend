@@ -2,7 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const Client = require("../Models/Client");
+const verifyToken = require("../middleware/verifyToken");
+const checkHeaders = require("../middleware/checkHeaders");
 
+router.use(checkHeaders);
+router.use(verifyToken);
 // GET /api/clients - Get all client names
 // router.get("/", async (req, res) => {
 //   try {
