@@ -5,8 +5,6 @@ const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 const Client = require("../Models/Client");
 const { getNextRepetitionDate, getNextDueDate } = require("../utils/dateUtils");
-const verifyToken = require("../middleware/verifyToken");
-const checkHeaders = require("../middleware/checkHeaders");
 
 
 // const { userSocketMap } = require("../server");
@@ -20,8 +18,7 @@ const {
 } = require("../utils/emitNotificationCount");
 
 
-router.use(checkHeaders);
-router.use(verifyToken);
+
 router.put("/hide-completed", async (req, res) => {
   try {
     console.log("Attempting to hide completed tasks...");
