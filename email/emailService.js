@@ -8,14 +8,19 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = (to, subject, text) => {
-  const mailOptions = {
-    from: process.env.GMAIL_USER, // Sender address
-    to,  // Recipient's email
-    subject,  // Email subject
-    text,  // Email content
-  };
 
+const sendEmail = (to, subject, text) => {
+  const SENDER_EMAIL = process.env.GMAIL_USER;
+  if (!to || to === SENDER_EMAIL) {
+    console.log(`⏭️ Not sending email to sender/system address: ${to}`);
+    return Promise.resolve();
+  }
+  const mailOptions = {
+    from: SENDER_EMAIL,
+    to,
+    subject,
+    text,
+  };
   return new Promise((resolve, reject) => {
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
@@ -26,5 +31,25 @@ const sendEmail = (to, subject, text) => {
     });
   });
 };
+
+
+// const sendEmail = (to, subject, text) => {
+//   const mailOptions = {
+//     from: process.env.GMAIL_USER, // Sender address
+//     to,  // Recipient's email
+//     subject,  // Email subject
+//     text,  // Email content
+//   };
+
+//   return new Promise((resolve, reject) => {
+//     transporter.sendMail(mailOptions, (error, info) => {
+//       if (error) {
+//         reject(error);
+//       } else {
+//         resolve(info);
+//       }
+//     });
+//   });
+// };
 
 module.exports = { sendEmail };

@@ -1,11 +1,9 @@
 const express = require("express");
 const router = express.Router();
-
 const { sendEmail } = require("../email/emailService"); // Import email service
 const Task = require("../Models/Task");
 const Client = require("../Models/Client");
 const { getNextRepetitionDate, getNextDueDate } = require("../utils/dateUtils");
-
 
 // const { userSocketMap } = require("../server");
 const axios = require("axios");
@@ -16,8 +14,6 @@ const io = require("../socket/socket");
 const {
   emitUnreadNotificationCount,
 } = require("../utils/emitNotificationCount");
-
-
 
 router.put("/hide-completed", async (req, res) => {
   try {
