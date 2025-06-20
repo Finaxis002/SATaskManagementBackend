@@ -4,7 +4,7 @@ const http = require("http");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./Config/db");
-
+const { initWhatsApp } = require("./whatsapp");
 const rateLimit = require("express-rate-limit");
 const verifyToken = require("./middleware/verifyToken");
 const checkHeaders = require("./middleware/checkHeaders");
@@ -24,6 +24,7 @@ const bcrypt = require("bcryptjs");
 const leaveRoutes = require("./Routes/leave");
 const invoiceRoutes = require("./Routes/invoice");
 const sentOtpViewInvoiceRoutes = require("./Routes/sentOtpViewInvoice");
+const whatsappRoutes = require("./Routes/whatsappRoute")
 
 scheduleTaskRepeats(); // Initialize the cron job
 
@@ -80,10 +81,14 @@ app.use("/api/clients", clientRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/", sentOtpViewInvoiceRoutes);
+app.use("/api/whatsapp", whatsappRoutes)
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
 
+
+global.io = io;
+initWhatsApp(io);
 app.set("io", io);
 app.set("userSocketMap", userSocketMap);
 // app.set("socketManager", socketManager);
