@@ -44,6 +44,7 @@ function initWhatsApp(io) {
 
 async function getChats(req, res) {
   if (!whatsappReady) {
+    console.error("WhatsApp client is not ready.");
     return res.status(503).json({ error: "WhatsApp client not ready" });
   }
 
@@ -53,11 +54,11 @@ async function getChats(req, res) {
   } catch (err) {
     whatsappReady = false; // Flag as not ready, so UI can show reconnect
     console.error("FATAL: getChats() failed inside WhatsApp Web context:", err);
+    console.error("Stack Trace:", err.stack); // Log the full error stack for deeper insights
 
     // Try to recover:
     // 1. Destroy and re-initialize WhatsApp client.
     // 2. Tell frontend to show QR/reconnect message.
-
     try {
       // Try to destroy old client (defensive: ignore if not possible)
       if (client && typeof client.destroy === "function") {
@@ -69,7 +70,6 @@ async function getChats(req, res) {
     }
 
     // Optionally: try to re-initialize the client automatically
-    // (if not, let the user scan QR again manually)
     setTimeout(() => {
       try {
         console.log(
@@ -160,12 +160,15 @@ async function getChats(req, res) {
   } catch (err) {
     whatsappReady = false;
     console.error("Error in /api/whatsapp/chats after getChats:", err);
+    console.error("Stack Trace:", err.stack); // Log the full error stack
+
     res.status(503).json({
       error: "WhatsApp client lost connection. Please reconnect.",
       details: err.message,
     });
   }
 }
+
 
 async function getContacts(req, res) {
   try {

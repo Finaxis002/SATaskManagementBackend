@@ -104,7 +104,7 @@ leaveNotificationService.init(io, userSocketMap);
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Task Management Backend is running - Testing");
+  res.send("Task Management Backend is running - Testing whatsapp");
 });
 
 const insertDefaultAdmin = async () => {
