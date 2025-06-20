@@ -39,7 +39,8 @@
     "node-npm": "^1.0.0",
     "nodemailer": "^6.10.1",
     "socket.io": "^4.8.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "whatsapp-web.js": "^1.30.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
