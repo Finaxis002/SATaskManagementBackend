@@ -71,6 +71,11 @@ app.use(
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res) => {
+     // For downloads, set Content-Disposition header
+    if (path.match(/\.(pdf|jpe?g|png|gif)$/i)) {
+      const filename = path.split('/').pop();
+      res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     res.set('Access-Control-Allow-Origin', allowedOrigins.join(','));
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   }
