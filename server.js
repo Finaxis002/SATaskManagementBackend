@@ -25,6 +25,7 @@ const leaveRoutes = require("./Routes/leave");
 const invoiceRoutes = require("./Routes/invoice");
 const sentOtpViewInvoiceRoutes = require("./Routes/sentOtpViewInvoice");
 const whatsappRoutes = require("./Routes/whatsappRoute")
+const path = require("path");
 
 scheduleTaskRepeats(); // Initialize the cron job
 
@@ -68,6 +69,12 @@ app.use(
 
 // app.use("/api", verifyToken, checkHeaders);
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', allowedOrigins.join(','));
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+}));
 
 app.use("/api/employees", emploeeRoutes);
 // app.use('/api/tasks', taskRoutes)
@@ -104,7 +111,7 @@ leaveNotificationService.init(io, userSocketMap);
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Task Management Backend is running -  whatsapp !!!!!!!!!!!!!");
+  res.send("Task Management Backend is running - file sharing...");
 });
 
 const insertDefaultAdmin = async () => {
