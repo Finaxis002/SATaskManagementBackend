@@ -7,7 +7,11 @@ const chatMessageSchema = new mongoose.Schema({
   },
   text: {
     type: String,
-    required: true,
+    required: false, // Make optional to support file-only messages
+  },
+  fileUrl: {
+    type: String,
+    required: false, // Optional field for file messages
   },
   timestamp: {
     type: String,
@@ -15,11 +19,11 @@ const chatMessageSchema = new mongoose.Schema({
   },
   recipient: {
     type: String,
-    required: false, // For group chat, recipient is not necessary
+    required: false,
   },
   group: {
     type: String,
-    required: false, // For group chat messages
+    required: false,
   },
   read: {
     type: Boolean,
