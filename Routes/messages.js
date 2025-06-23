@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const Employee = require("../Models/Employee");
 const upload = require("../upload");
-const getSocketIdByName = require("../utils/socketUtils")
+const getSocketIdByName = require("../utils/socketUtils");
 const path = require("path");
 const multer = require("multer");
 
@@ -22,7 +22,7 @@ const getUsersInGroup = async (groupName) => {
 // Post route for sending messages to a group
 router.post("/messages/:group", async (req, res) => {
   const { group } = req.params;
-  const { sender, text, timestamp, recipient, fileUrl } = req.body; // Added recipient to the request body
+  const { sender, text, timestamp, recipient, fileUrl, fileUrls } = req.body; // Added recipient to the request body
 
   console.log("Received message:", {
     sender,
@@ -33,20 +33,26 @@ router.post("/messages/:group", async (req, res) => {
   });
 
   if (!sender || !timestamp || (!text && !fileUrl)) {
-    return res
-      .status(400)
-      .json({
-        message:
-          "Missing required fields: sender, timestamp, and either text or fileUrl",
-      });
+    return res.status(400).json({
+      message:
+        "Missing required fields: sender, timestamp, and either text or fileUrl",
+    });
   }
 
   try {
+    const finalFileUrls =
+      Array.isArray(fileUrls) && fileUrls.length > 0
+        ? fileUrls
+        : fileUrl
+        ? [fileUrl]
+        : [];
     // Create a new message instance
     const newMessage = new ChatMessage({
       sender,
       text,
-      fileUrl,
+      fileUrls: finalFileUrls, // Save as array
+      fileUrl: finalFileUrls.length === 1 ? finalFileUrls[0] : undefined, // Save single for backward compatibility
+
       timestamp,
       group,
       recipient, // Store the recipient in case of direct messages
@@ -95,26 +101,32 @@ router.post("/messages/:group", async (req, res) => {
 // POST API to send a message to a user
 router.post("/messages/user/:username", async (req, res) => {
   const { username } = req.params; // Get the recipient username from the URL
-  const { sender, text, timestamp, recipient, fileUrl } = req.body; // Added recipient to the request body
+  const { sender, text, timestamp, recipient, fileUrl, fileUrls } = req.body; // Added recipient to the request body
   // Extract message details from the request body
 
   console.log("Received message:", { sender, text, timestamp, username });
 
   // Validate that required fields are present
   if (!sender || !timestamp || (!text && !fileUrl)) {
-    return res
-      .status(400)
-      .json({
-        message:
-          "Missing required fields: sender, timestamp, and either text or fileUrl",
-      });
+    return res.status(400).json({
+      message:
+        "Missing required fields: sender, timestamp, and either text or fileUrl",
+    });
   }
+
+  const finalFileUrls =
+    Array.isArray(fileUrls) && fileUrls.length > 0
+      ? fileUrls
+      : fileUrl
+      ? [fileUrl]
+      : [];
 
   try {
     // Create a new message object and save it to the database
     const newMessage = new ChatMessage({
       sender,
-      fileUrl,
+      fileUrls: finalFileUrls,
+      fileUrl: finalFileUrls.length === 1 ? finalFileUrls[0] : undefined,
       text,
       timestamp,
       recipient: username, // Store the recipient username
