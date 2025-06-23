@@ -43,22 +43,34 @@ connectDB();
 // Allow both localhost and production frontend URLs
 const allowedOrigins = [
   "http://localhost:5173", // for local development
-
   "https://task-management-software-phi.vercel.app",
   "https://sataskmanagement.onrender.com",
   "https://tasks.sharda.co.in",
 ];
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("CORS blocked this origin"));
-    },
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         return callback(null, true);
+//       }
+//       return callback(new Error("CORS blocked this origin"));
+//     },
+//     credentials: true,
+//   })
+// );
+
+
+app.use(require('cors')({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true, // if you use cookies or authentication
+}));
 
 // const apiLimiter = rateLimit({
 //   windowMs: 15 * 60 * 1000,
@@ -130,6 +142,17 @@ const insertDefaultAdmin = async () => {
 };
 
 insertDefaultAdmin();
+
+
+app.get("/api/mainadmins", async (req, res) => {
+  try {
+    const mainAdmins = await MainAdmin.find(); // Fetch all main admins from the database
+    res.status(200).json(mainAdmins); // Send the admins as response
+  } catch (err) {
+    console.error("❌ Error fetching main admins:", err.message);
+    res.status(500).json({ message: "Error fetching admins" });
+  }
+});
 
 // Start server
 const PORT = process.env.PORT || 1100;
