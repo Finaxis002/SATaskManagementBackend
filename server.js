@@ -59,22 +59,27 @@ app.use(
   })
 );
 
-// const apiLimiter = rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   max: 100,
-//   message: "Too many requests from this IP, please try again later.",
-// });
-// app.use("/api", apiLimiter);
 
-// app.use("/api", verifyToken, checkHeaders);
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res) => {
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+//   setHeaders: (res) => {
     
-    res.set('Access-Control-Allow-Origin', allowedOrigins.join(','));
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+//     res.set('Access-Control-Allow-Origin', allowedOrigins.join(','));
+//     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+//   }
+// }));
+
+app.use('/uploads', (req, res, next) => {
+  // Get the origin from the request
+  const origin = req.headers.origin;
+  // If the origin is allowed, set it
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin'); // For caching proxy compatibility
   }
-}));
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
+
 
 app.use("/api/employees", emploeeRoutes);
 // app.use('/api/tasks', taskRoutes)
