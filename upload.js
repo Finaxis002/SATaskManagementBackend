@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 // Initialize multer with the storage configuration and file filter
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // Optional: Set higher file size limit (e.g., 50MB)
+  limits: { fileSize: 200 * 1024 * 1024 }, // Optional: Set higher file size limit (e.g., 50MB)
   fileFilter: (req, file, cb) => {
     cb(null, true); // Accept all file types
   },
