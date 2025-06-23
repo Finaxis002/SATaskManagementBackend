@@ -47,30 +47,17 @@ const allowedOrigins = [
   "https://sataskmanagement.onrender.com",
   "https://tasks.sharda.co.in",
 ];
-// app.use(
-//   cors({
-//     origin: function (origin, callback) {
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         return callback(null, true);
-//       }
-//       return callback(new Error("CORS blocked this origin"));
-//     },
-//     credentials: true,
-//   })
-// );
-
-
-app.use(require('cors')({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true, // if you use cookies or authentication
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS blocked this origin"));
+    },
+    credentials: true,
+  })
+);
 
 // const apiLimiter = rateLimit({
 //   windowMs: 15 * 60 * 1000,
