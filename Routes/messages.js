@@ -32,10 +32,14 @@ router.post("/messages/:group", async (req, res) => {
     recipient,
   });
 
-  if (!sender || !timestamp || (!text && !fileUrl)) {
+  if (
+    !sender ||
+    !timestamp ||
+    (!text && !fileUrl && (!fileUrls || fileUrls.length === 0))
+  ) {
     return res.status(400).json({
       message:
-        "Missing required fields: sender, timestamp, and either text or fileUrl",
+        "Missing required fields: sender, timestamp, and either text or at least one file",
     });
   }
 
@@ -107,10 +111,14 @@ router.post("/messages/user/:username", async (req, res) => {
   console.log("Received message:", { sender, text, timestamp, username });
 
   // Validate that required fields are present
-  if (!sender || !timestamp || (!text && !fileUrl)) {
+  if (
+    !sender ||
+    !timestamp ||
+    (!text && !fileUrl && (!fileUrls || fileUrls.length === 0))
+  ) {
     return res.status(400).json({
       message:
-        "Missing required fields: sender, timestamp, and either text or fileUrl",
+        "Missing required fields: sender, timestamp, and either text or at least one file",
     });
   }
 
