@@ -1,10 +1,8 @@
-
-
 const { Server } = require("socket.io");
 const { sendLoginReminders } = require("../services/taskReminderService"); // 🔁 Import your reminder function
 // ✅ Keep both mappings
 global.userSocketMap = global.userSocketMap || {}; // email => socket.id (GLOBAL for reminders)
-const socketUserMap = {};                           // socket.id => email (LOCAL for disconnect)
+const socketUserMap = {}; // socket.id => email (LOCAL for disconnect)
 
 const initSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -13,7 +11,7 @@ const initSocket = (httpServer) => {
         "http://localhost:5173",
         "https://task-management-software-phi.vercel.app",
         "https://sataskmanagement.onrender.com",
-        "https://tasks.sharda.co.in"
+        "https://tasks.sharda.co.in",
       ],
       methods: ["GET", "POST"],
       credentials: true,
@@ -25,27 +23,28 @@ const initSocket = (httpServer) => {
 
     socket.on("register", (email, username) => {
       if (email && username) {
-        global.userSocketMap[email] = socket.id;    // ✅ Save globally
-        socketUserMap[socket.id] = email;            // ✅ Save locally
+        global.userSocketMap[email] = socket.id; // ✅ Save globally
+        socketUserMap[socket.id] = email; // ✅ Save locally
         console.log(`${username} connected with socket ID: ${socket.id}`);
-        console.log('userSocketMap:', global.userSocketMap);
-         require('../services/leaveNotificationService').init(io, global.userSocketMap);
+        console.log("userSocketMap:", global.userSocketMap);
+        require("../services/leaveNotificationService").init(
+          io,
+          global.userSocketMap
+        );
       } else {
         console.log("❌ Registration failed, email or username missing");
       }
     });
 
-
     // 🔔 On-demand login reminder trigger
     socket.on("request-login-reminder", async (email) => {
       try {
-        await sendLoginReminders(email);  // 🔁 Use your actual reminder logic
+        await sendLoginReminders(email); // 🔁 Use your actual reminder logic
         console.log("✅ Task-based login reminders sent to:", email);
       } catch (err) {
         console.error("❌ Error sending login reminders via socket:", err);
       }
     });
-
 
     // ✅ Task Reminder Event
     socket.on("task-reminder", (data) => {
@@ -61,10 +60,48 @@ const initSocket = (httpServer) => {
     });
 
     // ✅ Chat message event
+    // socket.on("sendMessage", (msg) => {
+    //   io.emit("receiveMessage", msg);
+    //   io.emit("inboxCountUpdated");
+    //   console.log("📨 Broadcasting message:", msg);
+    // });
+
+    // Inside your io.on("connection") callback
     socket.on("sendMessage", (msg) => {
-      io.emit("receiveMessage", msg);
-      io.emit("inboxCountUpdated");
-      console.log("📨 Broadcasting message:", msg);
+      // Notify recipient
+      const recipientSocketId = global.userSocketMap[msg.recipient];
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit("receiveMessage", msg);
+        io.to(recipientSocketId).emit("inboxCountUpdated"); // Trigger count update
+      }
+
+      // Also notify sender (except for self-messages)
+      if (msg.sender !== msg.recipient) {
+        const senderSocketId = global.userSocketMap[msg.sender];
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("receiveMessage", msg);
+        }
+      }
+
+      console.log("📨 Message sent to:", msg.recipient);
+    });
+
+    socket.on("markMessagesRead", (data) => {
+      const { readerEmail, senderEmail } = data;
+
+      // Notify reader's other devices
+      const readerSocketId = global.userSocketMap[readerEmail];
+      if (readerSocketId) {
+        io.to(readerSocketId).emit("inboxCountUpdated");
+      }
+
+      // Notify sender that their messages were read
+      if (senderEmail && senderEmail !== readerEmail) {
+        const senderSocketId = global.userSocketMap[senderEmail];
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("inboxCountUpdated");
+        }
+      }
     });
 
     socket.on("inboxRead", () => {
@@ -76,8 +113,8 @@ const initSocket = (httpServer) => {
       const email = socketUserMap[socket.id]; // Get email by socket id
 
       if (email) {
-        delete global.userSocketMap[email];  // ✅ Remove from global mapping
-        delete socketUserMap[socket.id];      // ✅ Remove from local mapping
+        delete global.userSocketMap[email]; // ✅ Remove from global mapping
+        delete socketUserMap[socket.id]; // ✅ Remove from local mapping
         console.log(`❌ Disconnected: ${email}`);
       }
     });
@@ -87,4 +124,3 @@ const initSocket = (httpServer) => {
 };
 
 module.exports = initSocket;
-
