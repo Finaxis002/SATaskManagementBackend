@@ -19,8 +19,14 @@ const getSocketIdByName = (username) => {
   return socketUserMap[username];
 };
 
+const getSocketIdsByName = (username) => {
+  return Array.from(socketUserMap[username] || []);
+};
+
+
 module.exports = {
   registerUserSocket,
   removeUserSocket,
   getSocketIdByName,
+  getSocketIdsByName
 };
