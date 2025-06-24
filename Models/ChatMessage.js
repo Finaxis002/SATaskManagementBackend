@@ -37,6 +37,7 @@ const chatMessageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    readBy: [{ type: String, default: [] }],
   },
   { timestamps: true }
 );

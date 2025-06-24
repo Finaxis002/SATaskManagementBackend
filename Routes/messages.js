@@ -5,7 +5,6 @@ const Employee = require("../Models/Employee");
 const upload = require("../upload");
 const { getSocketIdByName } = require("../utils/socketUtils");
 const path = require("path");
-const multer = require("multer");
 
 // Function to get users in a specific group
 const getUsersInGroup = async (groupName) => {
@@ -211,19 +210,48 @@ router.get("/messages/:group", async (req, res) => {
   }
 });
 
-router.put("/mark-read", async (req, res) => {
+router.get("/messages/user/:username", async (req, res) => {
+  const { username } = req.params;
+
   try {
-    await ChatMessage.updateMany({ read: false }, { $set: { read: true } });
+    // Find messages where either sender or recipient is the username
+    const messages = await ChatMessage.find({
+      $or: [{ sender: username }, { recipient: username }],
+    }).sort({ timestamp: -1 }); // Sort messages by timestamp in descending order
 
-    // 🛠️ After updating, broadcast to all connected clients
-    const io = req.app.get("io"); // make sure your socket.io instance is attached
-    io.emit("inboxCountUpdated"); // ✅ Tell frontend to refresh badges
-
-    res.status(200).json({ message: "All messages marked as read" });
+    res.json({ messages });
   } catch (err) {
-    console.error("❌ Error marking messages as read:", err.message);
-    res.status(500).json({ message: "Failed to mark messages as read" });
+    console.error("❌ Error fetching user-to-user messages:", err.message);
+    res.status(500).send("Server Error");
   }
+});
+
+// router.put("/mark-read", async (req, res) => {
+//   try {
+//     await ChatMessage.updateMany({ read: false }, { $set: { read: true } });
+
+//     // 🛠️ After updating, broadcast to all connected clients
+//     const io = req.app.get("io"); // make sure your socket.io instance is attached
+//     io.emit("inboxCountUpdated"); // ✅ Tell frontend to refresh badges
+
+//     res.status(200).json({ message: "All messages marked as read" });
+//   } catch (err) {
+//     console.error("❌ Error marking messages as read:", err.message);
+//     res.status(500).json({ message: "Failed to mark messages as read" });
+//   }
+// });
+
+router.put("/mark-read", async (req, res) => {
+  const { messageIds, userId } = req.body;
+  if (!Array.isArray(messageIds) || !userId) return res.sendStatus(400);
+
+  await ChatMessage.updateMany(
+    { _id: { $in: messageIds }, readBy: { $ne: userId } },
+    { $addToSet: { readBy: userId } }
+  );
+
+  req.app.get("io").emit("inboxCountUpdated", { userId });
+  res.status(200).json({ message: "Selected messages marked as read." });
 });
 
 router.put("/mark-read-group", async (req, res) => {
@@ -271,22 +299,6 @@ router.get("/group-members/:group", async (req, res) => {
   }
 });
 
-router.get("/messages/user/:username", async (req, res) => {
-  const { username } = req.params;
-
-  try {
-    // Find messages where either sender or recipient is the username
-    const messages = await ChatMessage.find({
-      $or: [{ sender: username }, { recipient: username }],
-    }).sort({ timestamp: -1 }); // Sort messages by timestamp in descending order
-
-    res.json({ messages });
-  } catch (err) {
-    console.error("❌ Error fetching user-to-user messages:", err.message);
-    res.status(500).send("Server Error");
-  }
-});
-
 // ✅ NEW ROUTE to fetch all group members
 router.get("/group-members", async (req, res) => {
   try {
@@ -306,30 +318,31 @@ router.get("/group-members", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
+// ========== [Replace your /unread-count endpoint logic with below] ==========
 router.get("/unread-count", async (req, res) => {
   const { name, role } = req.query;
 
   try {
     let count = 0;
 
-    // Direct unread messages
+    // Direct unread messages (use readBy!)
     const directUnread = await ChatMessage.countDocuments({
       recipient: name,
-      read: false,
+      readBy: { $ne: name },
       sender: { $ne: name },
+      $or: [{ group: { $exists: false } }, { group: "" }],
     });
 
     count += directUnread;
 
-    // For admins or users in groups
+    // Group unread (use readBy!)
     if (role === "admin" || role === "user") {
       const user = await Employee.findOne({ name });
       const userGroups = user?.department || [];
 
       const groupUnread = await ChatMessage.countDocuments({
         group: { $in: userGroups },
-        read: false,
+        readBy: { $ne: name },
         sender: { $ne: name },
       });
 
@@ -343,7 +356,47 @@ router.get("/unread-count", async (req, res) => {
   }
 });
 
+
 // Updated /group-unread-counts endpoint
+// router.get("/group-unread-counts", async (req, res) => {
+//   const { name } = req.query;
+//   const { userId, groups } = req.query; // groups: array of group IDs/names
+
+//   try {
+//     // Get user's groups first
+//     const user = await Employee.findOne({ name });
+//     const userGroups = user?.department || [];
+
+//     // Aggregate counts only for user's groups
+//     const results = await ChatMessage.aggregate([
+//       {
+//         $match: {
+//           group: { $in: groups },
+//           readBy: { $ne: userId },
+//           sender: { $ne: userId },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$group",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     const counts = {};
+//     results.forEach((item) => {
+//       counts[item._id] = item.count;
+//     });
+
+//     res.json({ groupUnreadCounts: counts });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
+// ========== [Replace your /group-unread-counts endpoint logic with below] ==========
 router.get("/group-unread-counts", async (req, res) => {
   const { name } = req.query;
 
@@ -352,12 +405,12 @@ router.get("/group-unread-counts", async (req, res) => {
     const user = await Employee.findOne({ name });
     const userGroups = user?.department || [];
 
-    // Aggregate counts only for user's groups
+    // Aggregate counts only for user's groups, use readBy!
     const results = await ChatMessage.aggregate([
       {
         $match: {
           group: { $in: userGroups },
-          read: false,
+          readBy: { $ne: name },
           sender: { $ne: name },
         },
       },
@@ -380,7 +433,42 @@ router.get("/group-unread-counts", async (req, res) => {
   }
 });
 
+
 // Updated /user-unread-counts endpoint
+// router.get("/user-unread-counts", async (req, res) => {
+//   const { name } = req.query;
+
+//   try {
+//     const results = await ChatMessage.aggregate([
+//       {
+//         $match: {
+//           recipient: name, // Only messages sent to this user
+//           read: false,
+//           sender: { $ne: name }, // Not their own messages
+//           group: { $exists: false }, // Only direct messages
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$sender",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     const counts = {};
+//     results.forEach((item) => {
+//       counts[item._id] = item.count;
+//     });
+
+//     res.json({ userUnreadCounts: counts });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
+// ========== [Replace your /user-unread-counts endpoint logic with below] ==========
 router.get("/user-unread-counts", async (req, res) => {
   const { name } = req.query;
 
@@ -388,10 +476,10 @@ router.get("/user-unread-counts", async (req, res) => {
     const results = await ChatMessage.aggregate([
       {
         $match: {
-          recipient: name, // Only messages sent to this user
-          read: false,
-          sender: { $ne: name }, // Not their own messages
-          group: { $exists: false }, // Only direct messages
+          recipient: name,
+          readBy: { $ne: name },
+          sender: { $ne: name },
+          $or: [{ group: { $exists: false } }, { group: "" }],
         },
       },
       {
@@ -412,6 +500,7 @@ router.get("/user-unread-counts", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Serve the uploaded files statically
 router.use("/uploads", express.static(path.join(__dirname, "uploads")));
