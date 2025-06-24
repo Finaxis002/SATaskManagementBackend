@@ -439,11 +439,15 @@ router.get("/unread-count", async (req, res) => {
 // ========== [Replace your /group-unread-counts endpoint logic with below] ==========
 router.get("/group-unread-counts", async (req, res) => {
   const { name } = req.query;
-
   try {
-    // Get user's groups first
     const user = await Employee.findOne({ name });
-    const userGroups = user?.department || [];
+    let userGroups = user?.department || [];
+    if ((!user || userGroups.length === 0) && name === "admin") {
+      userGroups = [
+        "Marketing", "Operations", "IT/Software", "SEO",
+        "Human Resource", "Finance", "Administration"
+      ];
+    }
 
     // Aggregate counts only for user's groups, use readBy!
     const results = await ChatMessage.aggregate([
@@ -461,7 +465,6 @@ router.get("/group-unread-counts", async (req, res) => {
         },
       },
     ]);
-
     const counts = {};
     results.forEach((item) => {
       counts[item._id] = item.count;
