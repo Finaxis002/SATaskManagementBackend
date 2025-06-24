@@ -119,7 +119,7 @@ leaveNotificationService.init(io, userSocketMap);
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Task Management Backend is running - file sharing...");
+  res.send("Task Management Backend is running - unread-count api is working");
 });
 
 const insertDefaultAdmin = async () => {
