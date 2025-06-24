@@ -3,7 +3,8 @@ const express = require("express");
 const router = express.Router();
 const Employee = require("../Models/Employee");
 const upload = require("../upload");
-const { getSocketIdByName } = require("../utils/socketUtils");
+const { getSocketIdsByName } = require("../utils/socketUtils");
+const { getSocketIdByName } = require("..//utils/socketUtils");
 const path = require("path");
 
 // Function to get users in a specific group
@@ -86,8 +87,10 @@ router.post("/messages/:group", async (req, res) => {
 
       // Emit inbox count update to all users in the group
       groupUsers.forEach((user) => {
-        const socketId = getSocketIdByName(user.name); // Get the socket ID by username
-        if (socketId) io.to(socketId).emit("inboxCountUpdated");
+        const socketIds = getSocketIdsByName(user.name);
+        socketIds.forEach((socketId) =>
+          io.to(socketId).emit("inboxCountUpdated")
+        );
       });
     }
 
@@ -342,7 +345,7 @@ router.get("/unread-count", async (req, res) => {
 
       const groupUnread = await ChatMessage.countDocuments({
         group: { $in: userGroups },
-        readBy: { $ne: name },
+        $or: [{ readBy: { $exists: false } }, { readBy: { $ne: name } }],
         sender: { $ne: name },
       });
 
@@ -355,7 +358,6 @@ router.get("/unread-count", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 // Updated /group-unread-counts endpoint
 // router.get("/group-unread-counts", async (req, res) => {
@@ -395,7 +397,6 @@ router.get("/unread-count", async (req, res) => {
 //   }
 // });
 
-
 // ========== [Replace your /group-unread-counts endpoint logic with below] ==========
 router.get("/group-unread-counts", async (req, res) => {
   const { name } = req.query;
@@ -433,7 +434,6 @@ router.get("/group-unread-counts", async (req, res) => {
   }
 });
 
-
 // Updated /user-unread-counts endpoint
 // router.get("/user-unread-counts", async (req, res) => {
 //   const { name } = req.query;
@@ -467,7 +467,6 @@ router.get("/group-unread-counts", async (req, res) => {
 //   }
 // });
 
-
 // ========== [Replace your /user-unread-counts endpoint logic with below] ==========
 router.get("/user-unread-counts", async (req, res) => {
   const { name } = req.query;
@@ -500,7 +499,6 @@ router.get("/user-unread-counts", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 
 // Serve the uploaded files statically
 router.use("/uploads", express.static(path.join(__dirname, "uploads")));
