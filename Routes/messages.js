@@ -322,42 +322,81 @@ router.get("/group-members", async (req, res) => {
   }
 });
 // ========== [Replace your /unread-count endpoint logic with below] ==========
+// router.get("/unread-count", async (req, res) => {
+//   const { name, role } = req.query;
+
+//   try {
+//     let count = 0;
+
+//     // Direct unread messages (use readBy!)
+//     const directUnread = await ChatMessage.countDocuments({
+//       recipient: name,
+//       readBy: { $ne: name },
+//       sender: { $ne: name },
+//       $or: [{ group: { $exists: false } }, { group: "" }],
+//     });
+
+//     count += directUnread;
+
+//     // Group unread (use readBy!)
+//     if (role === "admin" || role === "user") {
+//       const user = await Employee.findOne({ name });
+//       const userGroups = user?.department || [];
+
+//       const groupUnread = await ChatMessage.countDocuments({
+//         group: { $in: userGroups },
+//         $or: [{ readBy: { $exists: false } }, { readBy: { $ne: name } }],
+//         sender: { $ne: name },
+//       });
+
+//       count += groupUnread;
+//     }
+
+//     res.json({ unreadCount: count });
+//   } catch (err) {
+//     console.error("❌ Failed fetching unread count:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
 router.get("/unread-count", async (req, res) => {
   const { name, role } = req.query;
-
   try {
     let count = 0;
-
-    // Direct unread messages (use readBy!)
     const directUnread = await ChatMessage.countDocuments({
       recipient: name,
       readBy: { $ne: name },
       sender: { $ne: name },
       $or: [{ group: { $exists: false } }, { group: "" }],
     });
-
     count += directUnread;
 
-    // Group unread (use readBy!)
-    if (role === "admin" || role === "user") {
-      const user = await Employee.findOne({ name });
-      const userGroups = user?.department || [];
+    let user = await Employee.findOne({ name });
+    let userGroups = user?.department || [];
 
+    // Special fix for main admin
+    if ((!user || userGroups.length === 0) && name === "admin" && role === "admin") {
+      userGroups = [
+        "Marketing", "Operations", "IT/Software", "SEO", "Human Resource", "Finance", "Administration"
+      ];
+    }
+
+    if (role === "admin" || role === "user") {
       const groupUnread = await ChatMessage.countDocuments({
         group: { $in: userGroups },
         $or: [{ readBy: { $exists: false } }, { readBy: { $ne: name } }],
         sender: { $ne: name },
       });
-
       count += groupUnread;
     }
-
     res.json({ unreadCount: count });
   } catch (err) {
     console.error("❌ Failed fetching unread count:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Updated /group-unread-counts endpoint
 // router.get("/group-unread-counts", async (req, res) => {
