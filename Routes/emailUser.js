@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { execSync } = require('child_process');
-const fs = require('fs');
-const sqlite3 = require('sqlite3').verbose();
+const { execSync } = require("child_process");
+const fs = require("fs");
+const sqlite3 = require("sqlite3").verbose();
 
 // router.post('/create-email-user', async (req, res) => {
 //   try {
@@ -39,7 +39,6 @@ const sqlite3 = require('sqlite3').verbose();
 //   }
 // });
 
-
 router.post("/create-email-user", async (req, res) => {
   try {
     const { email, password } = req.body; // Accept email, not username
@@ -72,7 +71,7 @@ router.post("/create-email-user", async (req, res) => {
 
     // 3. Append to /etc/dovecot/users
     const dovecotUserLine = `${email}:${hashed}:::userdb_mail=maildir:/home/user-data/mail/mailboxes/${domain}/${username}/Maildir`;
-
+    fs.appendFileSync("/etc/dovecot/users", dovecotUserLine + "\n");
 
     // 4. Insert into SQLite
     const db = new sqlite3.Database("/home/user-data/mail/users.sqlite");
