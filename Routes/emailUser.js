@@ -93,4 +93,22 @@ router.post("/create-email-user", async (req, res) => {
   }
 });
 
+
+router.get('/list-email-users', (req, res) => {
+  try {
+    const data = fs.readFileSync('/etc/dovecot/users', 'utf8');
+    const users = data
+      .split('\n')
+      .filter(line => line.trim() !== '')
+      .map(line => {
+        const email = line.split(':')[0];
+        return { email };
+      });
+    res.json({ users });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read users.' });
+  }
+});
+
+
 module.exports = router;
