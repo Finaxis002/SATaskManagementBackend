@@ -1,2 +1,12 @@
 .vercel
 node_modules/
+.wwebjs_auth/
+.chrome_debug.log
+.Cookies
+.data_1
+000003.log
+LOG
+6ea66fa5b36b4157_0
+the-real-index
+QuotaManager
+QuotaManager-journal
