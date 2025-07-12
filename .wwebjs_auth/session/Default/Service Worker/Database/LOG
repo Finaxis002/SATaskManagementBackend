@@ -1,3 +1,2 @@
-2025/06/20-18:03:39.343 3e4c Reusing MANIFEST C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Service Worker\Database/MANIFEST-000001
-2025/06/20-18:03:39.344 3e4c Recovering log #3
-2025/06/20-18:03:39.345 3e4c Reusing old log C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Service Worker\Database/000003.log 
+2025/06/25-10:17:15.321 2b5c Creating DB C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Service Worker\Database since it was missing.
+2025/06/25-10:17:15.334 2b5c Reusing MANIFEST C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Service Worker\Database/MANIFEST-000001

@@ -1,3 +1,2 @@
-2025/06/20-18:03:39.359 1460 Reusing MANIFEST C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
-2025/06/20-18:03:39.360 1460 Recovering log #4
-2025/06/20-18:03:39.360 1460 Reusing old log C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Local Storage\leveldb/000004.log 
+2025/06/25-10:17:08.492 2264 Creating DB C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Local Storage\leveldb since it was missing.
+2025/06/25-10:17:08.539 2264 Reusing MANIFEST C:\Users\Admin\Desktop\TaskManagement-Software\SATaskManagementBackend\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001

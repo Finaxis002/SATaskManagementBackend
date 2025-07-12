@@ -26,6 +26,7 @@ const invoiceRoutes = require("./Routes/invoice");
 const sentOtpViewInvoiceRoutes = require("./Routes/sentOtpViewInvoice");
 const whatsappRoutes = require("./Routes/whatsappRoute")
 const path = require("path");
+const emailUserRoutes = require('./Routes/emailUser');
 
 scheduleTaskRepeats(); // Initialize the cron job
 
@@ -97,6 +98,8 @@ app.use("/api/leave", leaveRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/", sentOtpViewInvoiceRoutes);
 app.use("/api/whatsapp", whatsappRoutes)
+app.use('/api/email', emailUserRoutes);
+
 // ⬇️ Attach socket to server AFTER routes
 const initSocket = require("./socket/socket");
 const { io, userSocketMap } = initSocket(server);
