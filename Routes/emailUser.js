@@ -10,7 +10,7 @@ router.post("/create-email-user", async (req, res) => {
     if (!email || !password)
       return res
         .status(400)
-        .json({ success: false, message: "Email and password are required." });
+        .json({ success: false, message: "Email and password are required" });
 
     // Validate domain
     const match = email.match(/^([a-zA-Z0-9._-]+)@sharda\.co\.in$/);
